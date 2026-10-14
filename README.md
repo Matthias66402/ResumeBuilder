@@ -1,6 +1,24 @@
 # ResumeBuilder
 
-Abgespeckter Klon von [Reactive Resume](https://github.com/AmruthPillai/Reactive-Resume): PDF-Lebensläufe importieren, per LLM (Groq) strukturieren und im Reactive-Resume-Datenformat (JSONB) in PostgreSQL speichern.
+Abgespeckter Nachbau von [Reactive Resume](https://github.com/reactive-resume/reactive-resume): PDF-Lebensläufe importieren, per LLM (Groq) strukturieren und im Reactive-Resume-Datenformat (JSONB) in PostgreSQL speichern, bearbeiten, gestalten und als PDF exportieren.
+
+## Grundlage
+
+ResumeBuilder basiert auf **Reactive Resume** von Amruth Pillai, einem freien Open-Source-Lebenslauf-Editor:
+
+- **Quelle:** https://github.com/reactive-resume/reactive-resume (Website: https://rxresu.me)
+- **Stand der Vorlage:** Version 6.0.2, Commit `4034b720c` (12.10.2026)
+- **Lizenz:** MIT, Copyright (c) 2026 Amruth Pillai, siehe [Lizenzhinweise](#lizenzhinweise)
+
+Der Code ist eine eigenständige Neuentwicklung mit FastAPI und React, Reactive Resume selbst nutzt TypeScript mit Hono, TanStack und Drizzle. Übernommen bzw. nachgebildet wurden:
+
+| Aus Reactive Resume | Hier |
+|---|---|
+| Datenschema `packages/schema/src/resume/data.ts` und `default.ts` | `backend/app/schemas/resume.py`, `frontend/src/types/resume.ts` (JSON bleibt kompatibel) |
+| Parser-Prompt `packages/ai/src/prompts/parser-system.md` und Bereinigung `packages/ai/src/resume/sanitize.ts` | `backend/app/services/prompts/parser_system.md`, `backend/app/services/sanitize.py` |
+| Builder-Aufbau, Autosave und Undo (`apps/web/src/features/resume/`) | `frontend/src/builder/` |
+| Gestaltung der 17 Templates (`packages/pdf/src/templates/`) | `frontend/src/templates/` als HTML/CSS statt react-pdf |
+| Icon-Set [Phosphor Icons](https://phosphoricons.com) (MIT) | `@phosphor-icons/web`, `@phosphor-icons/core` |
 
 ## Starten (Docker)
 
@@ -47,3 +65,40 @@ Ein Klick auf einen Lebenslauf öffnet `/resumes/:id`, aufgebaut nach dem Vorbil
   - **Wo:** Kontaktangaben bekommen feste Icons. Abschnitte, Profile, Kenntnisse und Interessen haben ein frei wählbares Icon (`icon`-Feld); Profile übernehmen das Logo ihres Netzwerks automatisch.
   - **Picker:** Der Icon-Picker durchsucht den Phosphor-Katalog (`@phosphor-icons/core`). Der Katalog wird erst beim Öffnen geladen.
   - **Schalter:** Unter Design → Seite (`metadata.page.hideIcons` / `hideSectionIcons`).
+
+## Konten und Login
+
+- **Anmeldung:** E-Mail und Passwort, offene Registrierung unter `/login`.
+- **Passwörter:** Gespeichert als Argon2-Hash.
+- **Sitzung:** Ein zufälliges Token im httpOnly-Cookie `rb_session` (SameSite=Lax, 30 Tage). In der Tabelle `sessions` liegt nur sein SHA-256, Abmelden löscht die Sitzung auch auf dem Server. Hinter HTTPS `COOKIE_SECURE=true` setzen.
+- **Zugriff:** Jeder Lebenslauf gehört einem Konto (`resumes.user_id`). Fremde Lebensläufe und Bilder liefern 404, als gäbe es sie nicht.
+- **PDF-Export:** Chromium übernimmt das Sitzungs-Cookie des Anfragenden, damit auch die Druckseite geschützt bleibt.
+- **Bestand:** Lebensläufe aus der Zeit vor den Konten gehören keinem Konto. Das **erste** registrierte Konto übernimmt sie.
+
+## Lizenzhinweise
+
+Teile von ResumeBuilder sind von Reactive Resume abgeleitet (siehe [Grundlage](#grundlage)), das unter folgender Lizenz steht:
+
+```
+MIT License
+
+Copyright (c) 2026 Amruth Pillai
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
     max_upload_mb: int = 10
+    # Sign-in sessions last this long; set COOKIE_SECURE=true when the app is served over HTTPS.
+    session_days: int = 30
+    cookie_secure: bool = False
     # Where headless Chromium loads the frontend's print page for PDF export (in development: the Vite server).
     pdf_render_base_url: str = "http://127.0.0.1:8000"
     # Built React app; served by FastAPI when the directory exists.

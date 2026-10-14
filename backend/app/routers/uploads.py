@@ -4,8 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.auth import current_user
 from app.db import get_session
-from app.models import Resume, Upload
+from app.models import Resume, Upload, User
+from app.routers.resumes import get_own_resume
 
 router = APIRouter(tags=["uploads"])
 
@@ -29,9 +31,10 @@ class UploadOut(BaseModel):
 
 
 @router.post("/resumes/{resume_id}/picture", response_model=UploadOut, status_code=201)
-def upload_picture(resume_id: uuid.UUID, file: UploadFile, session: Session = Depends(get_session)) -> UploadOut:
-    if session.get(Resume, resume_id) is None:
-        raise HTTPException(404, "Lebenslauf nicht gefunden.")
+def upload_picture(
+    resume_id: uuid.UUID, file: UploadFile, user: User = Depends(current_user), session: Session = Depends(get_session)
+) -> UploadOut:
+    get_own_resume(session, resume_id, user)
     content = file.file.read(MAX_PICTURE_BYTES + 1)
     if len(content) > MAX_PICTURE_BYTES:
         raise HTTPException(413, "Das Bild ist größer als 5 MB.")
@@ -47,13 +50,14 @@ def upload_picture(resume_id: uuid.UUID, file: UploadFile, session: Session = De
 
 
 @router.get("/uploads/{upload_id}")
-def get_upload(upload_id: uuid.UUID, session: Session = Depends(get_session)) -> Response:
+def get_upload(upload_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session)) -> Response:
     upload = session.get(Upload, upload_id)
-    if upload is None:
+    resume = session.get(Resume, upload.resume_id) if upload else None
+    if upload is None or resume is None or resume.user_id != user.id:
         raise HTTPException(404, "Datei nicht gefunden.")
-    # Uploads never change (a new picture gets a new id), so they can be cached forever.
+    # Uploads never change (a new picture gets a new id); private, since they belong to one account.
     return Response(
         upload.content,
         media_type=upload.content_type,
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        headers={"Cache-Control": "private, max-age=31536000, immutable"},
     )

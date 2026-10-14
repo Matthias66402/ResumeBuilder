@@ -54,7 +54,14 @@ function useFontsLoaded() {
   return tick;
 }
 
-export default function ResumePreview({ data, zoom = 1 }: { data: ResumeData; zoom?: number }) {
+interface PreviewProps {
+  data: ResumeData;
+  zoom?: number;
+  /** Thumbnail mode (resume list): only the first sheet, no page labels, no print page size. */
+  thumbnail?: boolean;
+}
+
+export default function ResumePreview({ data, zoom = 1, thumbnail = false }: PreviewProps) {
   const { Component, id, bleed } = getTemplate(data.metadata.template);
   const size = PAGE_SIZES[data.metadata.page.format] ?? PAGE_SIZES.a4;
   const paginated = Number.isFinite(size.heightPx);
@@ -87,12 +94,12 @@ export default function ResumePreview({ data, zoom = 1 }: { data: ResumeData; zo
   );
 
   // Sheets can be stale for one render after layout pages are removed.
-  const visible = sheets.filter((s) => s.pageIndex < data.metadata.layout.pages.length);
+  const visible = sheets.filter((s) => s.pageIndex < data.metadata.layout.pages.length).slice(0, thumbnail ? 1 : undefined);
 
   return (
     <>
       {/* Printed page size from metadata.page.format; the sheets bring their own margins. */}
-      <style>{`@page { size: ${size.css}; margin: 0; }`}</style>
+      {!thumbnail && <style>{`@page { size: ${size.css}; margin: 0; }`}</style>}
       {paginated && (
         <div ref={measureRoot} className="rb-measure" aria-hidden>
           {unsplit(data).map((s) => sheet(s, s.pageIndex, "auto"))}
@@ -102,7 +109,7 @@ export default function ResumePreview({ data, zoom = 1 }: { data: ResumeData; zo
         {visible.map((s, i) => (
           <div key={i} className="rb-sheet-wrap">
             {sheet(s, i, size.height)}
-            {visible.length > 1 && (
+            {visible.length > 1 && !thumbnail && (
               <p className="rb-sheet-label">
                 Seite {i + 1} von {visible.length}
               </p>

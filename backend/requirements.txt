@@ -9,3 +9,4 @@ python-multipart>=0.0.18
 pymupdf>=1.25
 groq>=0.13
 playwright>=1.49
+argon2-cffi>=23.1

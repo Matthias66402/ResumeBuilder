@@ -48,7 +48,7 @@ def test_picture_settings_are_validated(client, resume_id):
 
 
 def test_pdf_download_has_attachment_name(client, resume_id, monkeypatch):
-    monkeypatch.setattr(resumes_router, "render_resume_pdf", lambda rid: b"%PDF-1.7 fake")
+    monkeypatch.setattr(resumes_router, "render_resume_pdf", lambda rid, token: b"%PDF-1.7 fake")
     client.put(f"/api/resumes/{resume_id}", json={"name": "Jürgen Müller"})
 
     res = client.get(f"/api/resumes/{resume_id}/pdf")
@@ -61,7 +61,7 @@ def test_pdf_download_has_attachment_name(client, resume_id, monkeypatch):
 
 
 def test_pdf_render_failure_is_502(client, resume_id, monkeypatch):
-    def fail(rid):
+    def fail(rid, token):
         raise RenderError("boom")
 
     monkeypatch.setattr(resumes_router, "render_resume_pdf", fail)

@@ -15,8 +15,8 @@ from app.services import parser
 
 
 @pytest.fixture
-def client():
-    # In-memory SQLite stands in for Postgres; the JSONB column falls back to JSON there.
+def new_client():
+    """Factory for clients sharing one in-memory SQLite database (stands in for Postgres; JSONB falls back to JSON)."""
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     TestSession = sessionmaker(bind=engine, expire_on_commit=False)
@@ -26,8 +26,24 @@ def client():
             yield session
 
     app.dependency_overrides[get_session] = override
-    yield TestClient(app)
+
+    def make(email: str | None = None) -> TestClient:
+        # Each client has its own cookie jar, i.e. its own browser; with an e-mail it signs up first.
+        client = TestClient(app)
+        if email:
+            res = client.post("/api/auth/register", json={"email": email, "password": "correct horse battery"})
+            assert res.status_code == 201, res.text
+        return client
+
+    make.session_factory = TestSession
+    yield make
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client(new_client):
+    """A signed-in client (most tests act as one user)."""
+    return new_client("user@example.com")
 
 
 @pytest.fixture

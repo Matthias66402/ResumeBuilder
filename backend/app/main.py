@@ -6,11 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import get_session
-from app.routers import resumes, uploads
+from app.routers import auth, resumes, uploads
 
 app = FastAPI(title="ResumeBuilder")
 
 api = APIRouter(prefix="/api")
+api.include_router(auth.router)
 api.include_router(resumes.router)
 api.include_router(uploads.router)
 

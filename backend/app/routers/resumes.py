@@ -3,13 +3,14 @@ import uuid
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.auth import COOKIE_NAME, current_user
 from app.config import get_settings
 from app.db import get_session
-from app.models import Resume
+from app.models import Resume, User
 from app.schemas.api import ResumeOut, ResumeSummary, ResumeUpdate
 from app.services.parser import ParseError, parse_resume_text
 from app.services.pdf_render import RenderError, render_resume_pdf
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/resumes", tags=["resumes"])
 
 # Sync handlers: FastAPI runs them in a threadpool, so PDF parsing and the Groq call don't block the event loop.
 @router.post("/import", response_model=ResumeOut, status_code=201)
-def import_resume(file: UploadFile, session: Session = Depends(get_session)) -> Resume:
+def import_resume(file: UploadFile, user: User = Depends(current_user), session: Session = Depends(get_session)) -> Resume:
     max_bytes = get_settings().max_upload_mb * 1024 * 1024
     content = file.file.read(max_bytes + 1)
     if len(content) > max_bytes:
@@ -40,6 +41,7 @@ def import_resume(file: UploadFile, session: Session = Depends(get_session)) -> 
 
     filename = file.filename or "resume.pdf"
     resume = Resume(
+        user_id=user.id,
         name=data.basics.name or Path(filename).stem,
         source_filename=filename,
         raw_text=text,
@@ -52,25 +54,28 @@ def import_resume(file: UploadFile, session: Session = Depends(get_session)) -> 
 
 
 @router.get("", response_model=list[ResumeSummary])
-def list_resumes(session: Session = Depends(get_session)) -> list[Resume]:
-    return list(session.scalars(select(Resume).order_by(Resume.created_at.desc())))
+def list_resumes(user: User = Depends(current_user), session: Session = Depends(get_session)) -> list[Resume]:
+    return list(session.scalars(select(Resume).where(Resume.user_id == user.id).order_by(Resume.created_at.desc())))
 
 
-def _get_or_404(session: Session, resume_id: uuid.UUID) -> Resume:
+def get_own_resume(session: Session, resume_id: uuid.UUID, user: User) -> Resume:
+    """The user's resume, or 404 – also for other users' resumes, so ids can't be probed."""
     resume = session.get(Resume, resume_id)
-    if resume is None:
+    if resume is None or resume.user_id != user.id:
         raise HTTPException(404, "Lebenslauf nicht gefunden.")
     return resume
 
 
 @router.get("/{resume_id}", response_model=ResumeOut)
-def get_resume(resume_id: uuid.UUID, session: Session = Depends(get_session)) -> Resume:
-    return _get_or_404(session, resume_id)
+def get_resume(resume_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session)) -> Resume:
+    return get_own_resume(session, resume_id, user)
 
 
 @router.put("/{resume_id}", response_model=ResumeOut)
-def update_resume(resume_id: uuid.UUID, update: ResumeUpdate, session: Session = Depends(get_session)) -> Resume:
-    resume = _get_or_404(session, resume_id)
+def update_resume(
+    resume_id: uuid.UUID, update: ResumeUpdate, user: User = Depends(current_user), session: Session = Depends(get_session)
+) -> Resume:
+    resume = get_own_resume(session, resume_id, user)
     if update.name is not None:
         resume.name = update.name
     if update.data is not None:
@@ -81,10 +86,13 @@ def update_resume(resume_id: uuid.UUID, update: ResumeUpdate, session: Session =
 
 
 @router.get("/{resume_id}/pdf")
-def download_pdf(resume_id: uuid.UUID, session: Session = Depends(get_session)) -> Response:
-    resume = _get_or_404(session, resume_id)
+def download_pdf(
+    resume_id: uuid.UUID, request: Request, user: User = Depends(current_user), session: Session = Depends(get_session)
+) -> Response:
+    resume = get_own_resume(session, resume_id, user)
     try:
-        pdf = render_resume_pdf(str(resume.id))
+        # Chromium signs in with the caller's session, so the print page and pictures stay protected.
+        pdf = render_resume_pdf(str(resume.id), request.cookies[COOKIE_NAME])
     except RenderError as exc:
         raise HTTPException(502, str(exc)) from exc
     # ASCII fallback plus RFC 5987 name, so umlauts survive in the downloaded file name.
@@ -98,6 +106,6 @@ def download_pdf(resume_id: uuid.UUID, session: Session = Depends(get_session)) 
 
 
 @router.delete("/{resume_id}", status_code=204)
-def delete_resume(resume_id: uuid.UUID, session: Session = Depends(get_session)) -> None:
-    session.delete(_get_or_404(session, resume_id))
+def delete_resume(resume_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session)) -> None:
+    session.delete(get_own_resume(session, resume_id, user))
     session.commit()
