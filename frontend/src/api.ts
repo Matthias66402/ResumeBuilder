@@ -1,4 +1,4 @@
-import type { Resume, ResumeSummary } from "./types/resume";
+import type { Resume, ResumeData, ResumeSummary } from "./types/resume";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, init);
@@ -12,6 +12,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   listResumes: () => request<ResumeSummary[]>("/resumes"),
   getResume: (id: string) => request<Resume>(`/resumes/${id}`),
+  updateResume: (id: string, update: { name?: string; data?: ResumeData }) =>
+    request<Resume>(`/resumes/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(update),
+    }),
   deleteResume: (id: string) => request<void>(`/resumes/${id}`, { method: "DELETE" }),
   importResume: (file: File) => {
     const form = new FormData();

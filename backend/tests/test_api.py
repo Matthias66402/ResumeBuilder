@@ -66,3 +66,34 @@ def test_rejects_pdf_without_text(client):
     doc.new_page()
     res = client.post("/api/resumes/import", files={"file": ("scan.pdf", doc.tobytes(), "application/pdf")})
     assert res.status_code == 422
+
+
+def test_update_replaces_name_and_data_and_keeps_unknown_metadata(client, sample_pdf, fake_groq):
+    created = client.post("/api/resumes/import", files={"file": ("cv.pdf", sample_pdf, "application/pdf")}).json()
+    data = created["data"]
+    data["basics"]["headline"] = "Staff Engineer"
+    data["metadata"]["template"] = "azurill"
+    data["metadata"]["stylesheet"] = {"custom": True}
+    data["sections"]["experience"]["items"][0]["hidden"] = True
+
+    res = client.put(f"/api/resumes/{created['id']}", json={"name": "Neu", "data": data})
+    assert res.status_code == 200, res.text
+
+    stored = client.get(f"/api/resumes/{created['id']}").json()
+    assert stored["name"] == "Neu"
+    assert stored["data"]["basics"]["headline"] == "Staff Engineer"
+    assert stored["data"]["metadata"]["template"] == "azurill"
+    assert stored["data"]["metadata"]["stylesheet"] == {"custom": True}
+    assert stored["data"]["sections"]["experience"]["items"][0]["hidden"] is True
+
+
+def test_update_rejects_invalid_data(client, sample_pdf, fake_groq):
+    created = client.post("/api/resumes/import", files={"file": ("cv.pdf", sample_pdf, "application/pdf")}).json()
+    data = created["data"]
+    data["sections"]["skills"]["items"] = [{"name": "Python", "level": 9}]
+    assert client.put(f"/api/resumes/{created['id']}", json={"data": data}).status_code == 422
+    assert client.put(f"/api/resumes/{created['id']}", json={"name": ""}).status_code == 422
+
+
+def test_update_unknown_resume_is_404(client):
+    assert client.put("/api/resumes/00000000-0000-0000-0000-000000000000", json={"name": "x"}).status_code == 404

@@ -45,7 +45,7 @@ def test_dates_are_structured_and_period_text_is_written():
     edu = data.sections.education.items[0]
     assert edu.dates.start is None and edu.dates.raw == "Sommer 2016"
     assert edu.period == "Sommer 2016"
-    assert data.metadata["page"]["locale"] == "de-DE"
+    assert data.metadata.page.locale == "de-DE"
 
 
 def test_raw_is_omitted_when_absent():

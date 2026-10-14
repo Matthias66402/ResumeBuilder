@@ -1,0 +1,98 @@
+/* Resume sheet styles. All design values come from CSS variables set in ResumePreview.tsx. */
+
+.rb-print-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.rb-sheet {
+  box-sizing: border-box;
+  padding: var(--rb-margin-y) var(--rb-margin-x);
+  background: var(--rb-bg);
+  color: var(--rb-text);
+  font-family: var(--rb-font-body);
+  font-size: var(--rb-size-body);
+  line-height: var(--rb-lh-body);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 8px 24px rgb(0 0 0 / 0.08);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  overflow-wrap: anywhere;
+}
+
+.rb-sheet h1,
+.rb-sheet h2 {
+  font-family: var(--rb-font-heading);
+  font-weight: var(--rb-weight-heading);
+  line-height: var(--rb-lh-heading);
+}
+
+.rb-stack { display: flex; flex-direction: column; gap: calc(var(--rb-gap-y) * 2); }
+.rb-entries { display: flex; flex-direction: column; gap: var(--rb-gap-y); }
+
+/* Header */
+.rb-header { margin-bottom: calc(var(--rb-gap-y) * 2.5); }
+.rb-name { font-size: calc(var(--rb-size-heading) * 1.7); }
+.rb-headline { font-size: calc(var(--rb-size-body) * 1.15); opacity: 0.85; }
+.rb-contact { margin-top: 0.3em; font-size: 0.95em; }
+.rb-sep { opacity: 0.5; }
+.rb-center { text-align: center; }
+
+.rb-link { color: inherit; text-decoration: var(--rb-link-decoration); text-underline-offset: 2px; }
+
+/* Sections and entries */
+.rb-heading {
+  /* Long German headings hyphenate (the sheet has a lang attribute) instead of breaking anywhere. */
+  overflow-wrap: normal;
+  hyphens: auto;
+  font-size: var(--rb-size-heading);
+  color: var(--rb-primary);
+  margin-bottom: calc(var(--rb-gap-y) * 0.75);
+}
+[data-entry] { break-inside: avoid; }
+.rb-entry-head { display: flex; justify-content: space-between; gap: var(--rb-gap-x); }
+.rb-entry-title { display: flex; flex-direction: column; min-width: 0; }
+.rb-entry-subtitle { opacity: 0.85; }
+.rb-entry-meta { display: flex; flex-direction: column; align-items: flex-end; text-align: right; flex-shrink: 0; opacity: 0.85; }
+.rb-entry-meta-inline { opacity: 0.75; font-size: 0.95em; }
+.rb-keywords { opacity: 0.85; }
+.rb-rich { margin-top: 0.2em; }
+.rb-rich a { color: inherit; text-decoration: var(--rb-link-decoration); }
+.rb-roles { margin-top: 0.3em; padding-left: 0.75em; border-left: 2px solid color-mix(in srgb, var(--rb-primary) 35%, transparent); display: flex; flex-direction: column; gap: 0.4em; }
+
+.rb-level { display: inline-flex; gap: 3px; margin-top: 2px; }
+.rb-level > span { width: 0.6em; height: 0.6em; border-radius: 9999px; border: 1px solid var(--rb-primary); }
+.rb-level > span.rb-level-on { background: var(--rb-primary); }
+
+/* Onyx */
+.rb-template-onyx .rb-header { padding-bottom: calc(var(--rb-gap-y) * 1.5); border-bottom: 2px solid var(--rb-primary); }
+.rb-template-onyx .rb-heading { text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid color-mix(in srgb, var(--rb-text) 20%, transparent); padding-bottom: 0.15em; }
+
+/* Azurill */
+.rb-template-azurill .rb-name { color: var(--rb-primary); }
+.rb-template-azurill .rb-columns { display: flex; gap: calc(var(--rb-gap-x) * 3); }
+.rb-template-azurill .rb-sidebar { width: var(--rb-sidebar-width); flex-shrink: 0; }
+.rb-template-azurill .rb-main { flex: 1; min-width: 0; }
+.rb-template-azurill .rb-heading { display: flex; align-items: center; gap: 0.5em; }
+.rb-template-azurill .rb-heading::after { content: ""; flex: 1; height: 1px; background: var(--rb-primary); opacity: 0.4; }
+
+/* Bronzor */
+.rb-template-bronzor .rb-header { border-left: 4px solid var(--rb-primary); padding-left: 0.75em; }
+.rb-template-bronzor .rb-row { display: grid; grid-template-columns: 22% 1fr; gap: calc(var(--rb-gap-x) * 3); }
+.rb-template-bronzor .rb-heading { font-size: calc(var(--rb-size-heading) * 0.85); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Off-screen full-length render that paginate.ts measures. */
+.rb-measure { position: fixed; top: 0; left: -10000px; visibility: hidden; pointer-events: none; }
+
+.rb-sheet-label { margin-top: 6px; text-align: center; font-size: 12px; color: rgb(100 116 139); }
+
+/* Printing: the builder hides its panels (print:hidden); every sheet prints as one page at real size. */
+@media print {
+  .rb-measure, .rb-sheet-label { display: none; }
+  .rb-print-root { zoom: 1 !important; gap: 0; display: block; }
+  /* Each sheet is exactly one printed page (@page margin 0); clipping avoids a stray blank page from rounding. */
+  .rb-sheet { box-shadow: none; overflow: hidden; }
+  .rb-sheet-wrap { break-after: page; }
+  .rb-sheet-wrap:last-child { break-after: auto; }
+}

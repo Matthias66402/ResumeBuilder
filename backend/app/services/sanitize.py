@@ -25,7 +25,6 @@ from app.schemas.resume import (
     SkillItem,
     VolunteerItem,
     Website,
-    default_metadata,
 )
 
 LOCALES = {"de": "de-DE", "en": "en-US"}
@@ -80,9 +79,7 @@ def sanitize(ex: x.ExtractedResume) -> ResumeData:
         return dates, format_dates(dates, lang)
 
     data = ResumeData()
-    metadata = default_metadata()
-    metadata["page"]["locale"] = LOCALES[lang]
-    data.metadata = metadata
+    data.metadata.page.locale = LOCALES[lang]
 
     b = ex.basics
     data.basics.name = b.name.strip()

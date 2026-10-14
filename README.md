@@ -29,3 +29,12 @@ Tests: `cd backend && pytest`
 3. `services/parser.py` schickt den Text an Groq (`GROQ_MODEL`, Strict Structured Output mit `schemas/extraction.py`, Fallback JSON-Mode).
 4. `services/sanitize.py` baut daraus `ResumeData` (`schemas/resume.py`, Spiegel von Reactive Resumes `data.ts`): IDs, Defaults, strukturierte Daten + Datums-Text.
 5. Gespeichert in `resumes.data` (JSONB), Rohtext in `resumes.raw_text`.
+
+## Builder (Bearbeiten & Styling)
+
+Ein Klick auf einen Lebenslauf öffnet `/resumes/:id`, aufgebaut nach dem Vorbild des Reactive-Resume-Builders:
+
+- **Links – Inhalte** (`frontend/src/builder/content/`): Persönliche Daten, Zusammenfassung und alle 12 Abschnitte. Einträge lassen sich per Drag & Drop sortieren, ausblenden, hinzufügen und löschen; Beschreibungen werden mit TipTap bearbeitet. Die Felder pro Abschnitt kommen aus `builder/sectionFields.ts`.
+- **Mitte – Vorschau** (`frontend/src/templates/`): HTML-Versionen der RR-Templates Onyx, Azurill und Bronzor. Gestylt wird über CSS-Variablen aus `metadata`. „PDF drucken“ nutzt den Druckdialog des Browsers.
+- **Rechts – Design** (`frontend/src/builder/design/`): Template, Layout (Abschnitte zwischen Haupt- und Seitenspalte ziehen, Seiten, Breite der Seitenspalte), Typografie, Farben, Seite.
+- **State** (`builder/store.ts`): Zustand + immer mit Undo/Redo (Strg+Z / Strg+Y). Gespeichert wird automatisch per `PUT /api/resumes/{id}`, jeweils das komplette `data`.

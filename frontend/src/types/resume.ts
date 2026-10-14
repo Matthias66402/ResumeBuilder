@@ -153,6 +153,47 @@ export interface Sections {
   references: Section<ReferenceItem>;
 }
 
+export type SectionKey = keyof Sections;
+
+export interface PageLayout {
+  fullWidth: boolean;
+  main: string[];
+  sidebar: string[];
+}
+
+export interface TypographyItem {
+  fontFamily: string;
+  fontWeights: string[];
+  fontSize: number;
+  lineHeight: number;
+}
+
+export type DateFormat = "short" | "long" | "numeric" | "iso";
+
+export interface Metadata {
+  template: string;
+  layout: { sidebarWidth: number; pages: PageLayout[] };
+  page: {
+    gapX: number;
+    gapY: number;
+    marginX: number;
+    marginY: number;
+    format: "a4" | "letter" | "free-form";
+    locale: string;
+    dateFormat: DateFormat;
+    hideLinkUnderline: boolean;
+    hideIcons: boolean;
+    hideSectionIcons: boolean;
+  };
+  design: {
+    colors: { primary: string; text: string; background: string };
+    level: { icon: string; type: string };
+  };
+  typography: { body: TypographyItem; heading: TypographyItem };
+  notes: string;
+  styleRules: unknown[];
+}
+
 export interface ResumeData {
   picture: Record<string, unknown>;
   basics: {
@@ -167,7 +208,7 @@ export interface ResumeData {
   summary: Omit<Section<never>, "items"> & { content: string };
   sections: Sections;
   customSections: unknown[];
-  metadata: Record<string, unknown>;
+  metadata: Metadata;
 }
 
 export interface ResumeSummary {

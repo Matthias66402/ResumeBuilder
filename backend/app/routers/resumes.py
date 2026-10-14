@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import get_session
 from app.models import Resume
-from app.schemas.api import ResumeOut, ResumeSummary
+from app.schemas.api import ResumeOut, ResumeSummary, ResumeUpdate
 from app.services.parser import ParseError, parse_resume_text
 from app.services.pdf_text import PdfError, extract_text
 
@@ -63,6 +63,18 @@ def _get_or_404(session: Session, resume_id: uuid.UUID) -> Resume:
 @router.get("/{resume_id}", response_model=ResumeOut)
 def get_resume(resume_id: uuid.UUID, session: Session = Depends(get_session)) -> Resume:
     return _get_or_404(session, resume_id)
+
+
+@router.put("/{resume_id}", response_model=ResumeOut)
+def update_resume(resume_id: uuid.UUID, update: ResumeUpdate, session: Session = Depends(get_session)) -> Resume:
+    resume = _get_or_404(session, resume_id)
+    if update.name is not None:
+        resume.name = update.name
+    if update.data is not None:
+        resume.data = update.data.model_dump(mode="json")
+    session.commit()
+    session.refresh(resume)
+    return resume
 
 
 @router.delete("/{resume_id}", status_code=204)

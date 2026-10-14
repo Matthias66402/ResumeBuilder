@@ -254,7 +254,6 @@ class Sections(CamelModel):
 
 
 def default_metadata() -> dict[str, Any]:
-    # Layout/design are not edited yet, so metadata is kept as an opaque dict with Reactive Resume's defaults.
     return {
         "template": "onyx",
         "layout": {
@@ -296,6 +295,81 @@ def default_metadata() -> dict[str, Any]:
     }
 
 
+# --- Metadata (template, layout, design) -----------------------------------------------------------
+
+
+class LooseModel(CamelModel):
+    # Reactive Resume has more metadata fields (stylesheet, check, …) than are edited here; keep them.
+    model_config = ConfigDict(extra="allow")
+
+
+class PageLayout(CamelModel):
+    full_width: bool = False
+    main: list[str] = Field(default_factory=list)
+    sidebar: list[str] = Field(default_factory=list)
+
+
+class Layout(LooseModel):
+    sidebar_width: float = 35
+    pages: list[PageLayout] = Field(default_factory=lambda: [PageLayout(**p) for p in default_metadata()["layout"]["pages"]])
+
+    @field_validator("sidebar_width", mode="before")
+    @classmethod
+    def _sidebar_width(cls, value: Any) -> Any:
+        return value if isinstance(value, (int, float)) and 10 <= value <= 50 else 35
+
+    @field_validator("pages")
+    @classmethod
+    def _at_least_one_page(cls, value: list[PageLayout]) -> list[PageLayout]:
+        return value or [PageLayout()]
+
+
+class Page(LooseModel):
+    gap_x: float = Field(default=4, ge=0)
+    gap_y: float = Field(default=6, ge=0)
+    margin_x: float = Field(default=14, ge=0, le=100)
+    margin_y: float = Field(default=12, ge=0, le=100)
+    format: Literal["a4", "letter", "free-form"] = "a4"
+    locale: str = "en-US"
+    date_format: Literal["short", "long", "numeric", "iso"] = "short"
+    hide_link_underline: bool = False
+    hide_icons: bool = False
+    hide_section_icons: bool = True
+
+
+class Colors(CamelModel):
+    primary: str = "rgba(220, 38, 38, 1)"
+    text: str = "rgba(0, 0, 0, 1)"
+    background: str = "rgba(255, 255, 255, 1)"
+
+
+class Design(LooseModel):
+    colors: Colors = Field(default_factory=Colors)
+    level: dict[str, Any] = Field(default_factory=lambda: {"icon": "star", "type": "circle"})
+
+
+class TypographyItem(CamelModel):
+    font_family: str = "IBM Plex Serif"
+    font_weights: list[str] = Field(default_factory=lambda: ["400"])
+    font_size: float = Field(default=11, ge=6, le=24)
+    line_height: float = Field(default=1.5, ge=0.5, le=4)
+
+
+class Typography(LooseModel):
+    body: TypographyItem = Field(default_factory=lambda: TypographyItem(font_weights=["400", "500"], font_size=10))
+    heading: TypographyItem = Field(default_factory=lambda: TypographyItem(font_weights=["600"], font_size=14))
+
+
+class Metadata(LooseModel):
+    template: str = "onyx"
+    layout: Layout = Field(default_factory=Layout)
+    page: Page = Field(default_factory=Page)
+    design: Design = Field(default_factory=Design)
+    typography: Typography = Field(default_factory=Typography)
+    notes: str = ""
+    style_rules: list[Any] = Field(default_factory=list)
+
+
 class ResumeData(CamelModel):
     model_config = ConfigDict(extra="allow")
 
@@ -304,4 +378,4 @@ class ResumeData(CamelModel):
     summary: Summary = Field(default_factory=Summary)
     sections: Sections = Field(default_factory=Sections)
     custom_sections: list[dict[str, Any]] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=default_metadata)
+    metadata: Metadata = Field(default_factory=Metadata)
