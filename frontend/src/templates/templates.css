@@ -1,4 +1,5 @@
-/* Resume sheet styles. All design values come from CSS variables set in ResumePreview.tsx. */
+/* Resume sheet styles. Design values come from CSS variables set in ResumePreview.tsx; each template's
+   look is a block below, ported from Reactive Resume's StyleSheets (packages/pdf/src/templates). */
 
 .rb-print-root {
   display: flex;
@@ -8,6 +9,13 @@
 }
 
 .rb-sheet {
+  /* Derived colors. Inverted areas (a solid primary sidebar) override --rb-accent. */
+  --rb-accent: var(--rb-primary);
+  --rb-tint: color-mix(in srgb, var(--rb-primary) 20%, var(--rb-bg));
+  --rb-tint-light: color-mix(in srgb, var(--rb-primary) 10%, var(--rb-bg));
+  --rb-rule: color-mix(in srgb, var(--rb-primary) 30%, var(--rb-bg));
+
+  position: relative;
   box-sizing: border-box;
   padding: var(--rb-margin-y) var(--rb-margin-x);
   background: var(--rb-bg);
@@ -18,8 +26,14 @@
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 8px 24px rgb(0 0 0 / 0.08);
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
-  overflow-wrap: anywhere;
+  /* Words hyphenate by the sheet's lang (German resumes have long compounds); only words that still
+     don't fit, like e-mail addresses in a narrow sidebar, break at any character. */
+  hyphens: auto;
+  overflow-wrap: break-word;
 }
+/* Addresses and links don't hyphenate; in a narrow column they may break anywhere (flex items need
+   `anywhere` to shrink below their content width). */
+.rb-sheet a, .rb-contact-item { hyphens: none; overflow-wrap: anywhere; min-width: 0; }
 
 .rb-sheet h1,
 .rb-sheet h2 {
@@ -28,26 +42,49 @@
   line-height: var(--rb-lh-heading);
 }
 
+/* --- Page structure ------------------------------------------------------------------------------ */
+
+.rb-root { display: flex; flex-direction: column; gap: calc(var(--rb-gap-y) * 2.5); }
 .rb-stack { display: flex; flex-direction: column; gap: calc(var(--rb-gap-y) * 2); }
 .rb-entries { display: flex; flex-direction: column; gap: var(--rb-gap-y); }
 
-/* Header */
-.rb-header { margin-bottom: calc(var(--rb-gap-y) * 2.5); }
-.rb-name { font-size: calc(var(--rb-size-heading) * 1.7); }
-.rb-headline { font-size: calc(var(--rb-size-body) * 1.15); opacity: 0.85; }
-.rb-contact { margin-top: 0.3em; font-size: 0.95em; }
-.rb-sep { opacity: 0.5; }
-.rb-center { text-align: center; }
+.rb-columns { display: flex; gap: calc(var(--rb-gap-x) * 3); }
+.rb-sidebar-right { flex-direction: row-reverse; }
+.rb-sidebar { width: var(--rb-sidebar-width); flex-shrink: 0; }
+.rb-main { flex: 1; min-width: 0; }
+
+/* Full-bleed templates: no sheet padding; columns and bands inset themselves by the page margin, so
+   backgrounds reach the paper edge. paginate.ts uses the same margin on every sheet. */
+.rb-sheet-bleed { padding: 0; display: flex; flex-direction: column; }
+.rb-sheet-bleed > .rb-root { flex: 1; gap: 0; }
+.rb-sheet-bleed .rb-columns { flex: 1; gap: 0; }
+.rb-sheet-bleed .rb-col { padding: var(--rb-margin-y) var(--rb-margin-x); }
+
+/* --- Header ---------------------------------------------------------------------------------------- */
+
+.rb-header { display: flex; align-items: center; gap: calc(var(--rb-gap-x) * 3); }
+.rb-header-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--rb-gap-y) * 0.5); }
+.rb-header-picture-right { flex-direction: row-reverse; }
+.rb-header-picture-top { flex-direction: column; align-items: stretch; gap: calc(var(--rb-gap-y) * 1.5); }
+.rb-header-picture-top > .rb-picture { align-self: center; }
+.rb-identity { display: flex; flex-direction: column; gap: calc(var(--rb-gap-y) * 0.35); }
+.rb-name { font-size: calc(var(--rb-size-heading) * 1.5); }
+.rb-headline { font-size: calc(var(--rb-size-body) * 1.1); }
+.rb-picture { flex-shrink: 0; display: block; background: color-mix(in srgb, var(--rb-text) 5%, transparent); }
+.rb-sidebar-picture { display: flex; justify-content: center; }
+
+.rb-contact { display: flex; flex-wrap: wrap; column-gap: 0.5em; row-gap: 0.15em; font-size: 0.95em; }
+.rb-contact-inline .rb-contact-item + .rb-contact-item::before { content: "·"; margin-right: 0.5em; opacity: 0.5; }
+.rb-contact-list { flex-direction: column; }
+.rb-contact-grid { display: grid; grid-template-columns: 1fr 1fr; }
 
 .rb-link { color: inherit; text-decoration: var(--rb-link-decoration); text-underline-offset: 2px; }
 
-/* Sections and entries */
+/* --- Sections and entries -------------------------------------------------------------------------- */
+
 .rb-heading {
-  /* Long German headings hyphenate (the sheet has a lang attribute) instead of breaking anywhere. */
-  overflow-wrap: normal;
-  hyphens: auto;
   font-size: var(--rb-size-heading);
-  color: var(--rb-primary);
+  color: var(--rb-accent);
   margin-bottom: calc(var(--rb-gap-y) * 0.75);
 }
 [data-entry] { break-inside: avoid; }
@@ -59,28 +96,205 @@
 .rb-keywords { opacity: 0.85; }
 .rb-rich { margin-top: 0.2em; }
 .rb-rich a { color: inherit; text-decoration: var(--rb-link-decoration); }
-.rb-roles { margin-top: 0.3em; padding-left: 0.75em; border-left: 2px solid color-mix(in srgb, var(--rb-primary) 35%, transparent); display: flex; flex-direction: column; gap: 0.4em; }
+.rb-roles { margin-top: 0.3em; padding-left: 0.75em; border-left: 2px solid color-mix(in srgb, var(--rb-accent) 35%, transparent); display: flex; flex-direction: column; gap: 0.4em; }
 
 .rb-level { display: inline-flex; gap: 3px; margin-top: 2px; }
-.rb-level > span { width: 0.6em; height: 0.6em; border-radius: 9999px; border: 1px solid var(--rb-primary); }
-.rb-level > span.rb-level-on { background: var(--rb-primary); }
+.rb-level > span { width: 0.6em; height: 0.6em; border-radius: 9999px; border: 1px solid var(--rb-accent); }
+.rb-level > span.rb-level-on { background: var(--rb-accent); }
 
-/* Onyx */
+/* Shared heading styles */
+.rb-template-kakuna .rb-heading,
+.rb-template-meowth .rb-heading,
+.rb-template-rhyhorn .rb-heading,
+.rb-template-chikorita .rb-heading,
+.rb-template-gengar .rb-heading,
+.rb-template-ditgar .rb-heading { border-bottom: 1px solid var(--rb-accent); padding-bottom: calc(var(--rb-gap-y) * 0.125); }
+.rb-template-leafish .rb-heading,
+.rb-template-glalie .rb-heading,
+.rb-template-pikachu .rb-heading { color: inherit; border-bottom: 1px solid var(--rb-primary); }
+
+/* --- Onyx: single column, accent rule under the header ----------------------------------------- */
 .rb-template-onyx .rb-header { padding-bottom: calc(var(--rb-gap-y) * 1.5); border-bottom: 2px solid var(--rb-primary); }
 .rb-template-onyx .rb-heading { text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid color-mix(in srgb, var(--rb-text) 20%, transparent); padding-bottom: 0.15em; }
 
-/* Azurill */
+/* --- Azurill: centered header, sidebar left, headings trail a rule ------------------------------- */
+.rb-template-azurill .rb-header { text-align: center; }
+.rb-template-azurill .rb-contact { justify-content: center; }
 .rb-template-azurill .rb-name { color: var(--rb-primary); }
-.rb-template-azurill .rb-columns { display: flex; gap: calc(var(--rb-gap-x) * 3); }
-.rb-template-azurill .rb-sidebar { width: var(--rb-sidebar-width); flex-shrink: 0; }
-.rb-template-azurill .rb-main { flex: 1; min-width: 0; }
 .rb-template-azurill .rb-heading { display: flex; align-items: center; gap: 0.5em; }
 .rb-template-azurill .rb-heading::after { content: ""; flex: 1; height: 1px; background: var(--rb-primary); opacity: 0.4; }
 
-/* Bronzor */
+/* --- Bronzor: headings in a label column ---------------------------------------------------------- */
 .rb-template-bronzor .rb-header { border-left: 4px solid var(--rb-primary); padding-left: 0.75em; }
 .rb-template-bronzor .rb-row { display: grid; grid-template-columns: 22% 1fr; gap: calc(var(--rb-gap-x) * 3); }
 .rb-template-bronzor .rb-heading { font-size: calc(var(--rb-size-heading) * 0.85); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* --- Kakuna: everything centered ------------------------------------------------------------------- */
+.rb-template-kakuna .rb-header { text-align: center; }
+.rb-template-kakuna .rb-contact { justify-content: center; column-gap: 0.75em; }
+.rb-template-kakuna .rb-heading { text-align: center; }
+
+/* --- Lapras: header and sections as outlined cards, headings sit on the top border -------------- */
+.rb-template-lapras .rb-header,
+.rb-template-lapras .rb-section {
+  border: 1px solid #cccccc;
+  border-radius: var(--rb-card-radius);
+  background: var(--rb-bg);
+  padding: var(--rb-gap-x);
+}
+.rb-template-lapras .rb-section { position: relative; padding-top: calc(var(--rb-gap-x) + var(--rb-size-heading) * 0.6); margin-top: calc(var(--rb-size-heading) * 0.75); }
+.rb-template-lapras .rb-section .rb-heading {
+  position: absolute;
+  top: calc(var(--rb-size-heading) * -0.75);
+  left: var(--rb-gap-x);
+  margin: 0;
+  padding: 0 var(--rb-gap-x);
+  background: var(--rb-bg);
+  color: inherit;
+}
+
+/* --- Meowth: uppercase accent headings ------------------------------------------------------------- */
+.rb-template-meowth .rb-heading { text-transform: uppercase; }
+.rb-template-meowth .rb-headline { opacity: 0.8; }
+.rb-template-meowth .rb-contact { column-gap: 0.75em; }
+.rb-template-meowth .rb-contact-item + .rb-contact-item::before { content: none; }
+
+/* --- Rhyhorn: contact separated by accent bars ----------------------------------------------------- */
+.rb-template-rhyhorn .rb-header { gap: var(--rb-gap-x); }
+.rb-template-rhyhorn .rb-contact-item + .rb-contact-item::before { content: "|"; color: var(--rb-primary); opacity: 1; }
+
+/* --- Scizor: accent bar on top, light dividers between sections -------------------------------- */
+.rb-template-scizor::before { content: ""; position: absolute; inset: 0 0 auto 0; height: calc(var(--rb-gap-y) * 0.45); background: var(--rb-primary); }
+.rb-template-scizor .rb-header { align-items: flex-start; padding-bottom: calc(var(--rb-gap-y) * 0.35); }
+.rb-template-scizor .rb-name { font-size: calc(var(--rb-size-heading) * 1.85); width: 72%; border-bottom: 2px solid #d8dce2; padding-bottom: 0.15em; }
+.rb-template-scizor .rb-section { border-top: 1px solid #d8dce2; padding-top: calc(var(--rb-gap-y) * 0.65); }
+.rb-template-scizor .rb-heading { color: inherit; font-size: calc(var(--rb-size-heading) * 0.9); text-transform: uppercase; }
+
+/* --- Porygon: framed header grid, accent title bars, entries as ruled cells ---------------------- */
+.rb-template-porygon .rb-header { border: 1px solid var(--rb-primary); gap: 0; align-items: stretch; }
+.rb-template-porygon .rb-identity { padding: calc(var(--rb-gap-y) * 0.95) calc(var(--rb-gap-x) * 0.75); }
+.rb-template-porygon .rb-header-text { gap: 0; }
+.rb-template-porygon .rb-name { font-size: calc(var(--rb-size-heading) * 2); }
+.rb-template-porygon .rb-headline { color: var(--rb-primary); }
+.rb-template-porygon .rb-contact { gap: 0; }
+.rb-template-porygon .rb-contact-item { border-top: 0.75pt solid var(--rb-rule); border-left: 0.75pt solid var(--rb-rule); margin-left: -0.75pt; padding: calc(var(--rb-gap-y) * 0.45) calc(var(--rb-gap-x) * 0.75); }
+.rb-template-porygon .rb-header > .rb-picture { margin: calc(var(--rb-gap-x) * 0.75); }
+.rb-template-porygon .rb-heading {
+  background: var(--rb-primary);
+  color: var(--rb-bg);
+  font-size: calc(var(--rb-size-heading) * 0.8);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: calc(var(--rb-gap-y) * 0.4) calc(var(--rb-gap-x) * 0.75);
+  margin-bottom: 0;
+}
+.rb-template-porygon .rb-entries { gap: 0; }
+.rb-template-porygon [data-entry] { border: 0.75pt solid var(--rb-rule); margin-top: -0.75pt; padding: calc(var(--rb-gap-y) * 0.75) calc(var(--rb-gap-x) * 0.75); }
+.rb-template-porygon .rb-featured [data-entry] { border: 0; padding: 0; margin: 0; }
+
+/* --- Smeargle: editorial header, italic headings, summary as standfirst ------------------------- */
+.rb-template-smeargle .rb-header { align-items: flex-end; border-bottom: 0.5pt solid var(--rb-text); padding-bottom: calc(var(--rb-gap-y) * 1.25); }
+.rb-template-smeargle .rb-identity { flex-direction: column-reverse; gap: calc(var(--rb-gap-y) * 0.6); }
+.rb-template-smeargle .rb-headline { font-size: 0.85em; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--rb-primary); }
+.rb-template-smeargle .rb-name { font-size: calc(var(--rb-size-heading) * 2.25); font-weight: 400; line-height: 1.05; letter-spacing: -0.02em; }
+.rb-template-smeargle .rb-contact { font-size: 0.85em; column-gap: 1em; }
+.rb-template-smeargle .rb-contact-item + .rb-contact-item::before { content: none; }
+.rb-template-smeargle .rb-heading { color: inherit; font-weight: 400; font-style: italic; }
+.rb-template-smeargle .rb-featured { width: 85%; font-size: 1.15em; font-style: italic; line-height: 1.45; }
+
+/* --- Leafish: tinted header band with summary, darker contact band, sidebar right -------------- */
+.rb-template-leafish .rb-header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "picture identity" "picture summary" "contact contact";
+  column-gap: var(--rb-gap-x);
+  row-gap: calc(var(--rb-gap-y) * 0.5);
+  align-items: center;
+  background: var(--rb-tint-light);
+  padding: var(--rb-margin-y) var(--rb-margin-x) 0;
+}
+.rb-template-leafish .rb-header-text { display: contents; }
+.rb-template-leafish .rb-header > .rb-picture { grid-area: picture; }
+.rb-template-leafish .rb-identity { grid-area: identity; }
+.rb-template-leafish .rb-featured { grid-area: summary; }
+.rb-template-leafish .rb-header .rb-contact {
+  grid-area: contact;
+  margin: var(--rb-margin-y) calc(var(--rb-margin-x) * -1) 0;
+  padding: calc(var(--rb-margin-y) * 0.6) var(--rb-margin-x);
+  background: var(--rb-tint);
+  column-gap: 1em;
+}
+.rb-template-leafish .rb-contact-item + .rb-contact-item::before { content: none; }
+
+/* --- Ditto: accent header band, contact aligned with the main column ---------------------------- */
+.rb-template-ditto .rb-header {
+  display: grid;
+  grid-template-columns: var(--rb-sidebar-width) 1fr;
+  grid-template-areas: "picture identity" ". contact";
+  gap: 0;
+  align-items: stretch;
+}
+.rb-template-ditto .rb-header-text { display: contents; }
+.rb-template-ditto .rb-header > .rb-picture { grid-area: picture; justify-self: center; align-self: center; margin: calc(var(--rb-margin-y) * 0.75) 0; }
+.rb-template-ditto .rb-header::before { content: ""; grid-row: 1; grid-column: 1 / -1; background: var(--rb-primary); }
+.rb-template-ditto .rb-identity { grid-area: identity; position: relative; justify-content: center; color: var(--rb-bg); padding: var(--rb-margin-y) var(--rb-margin-x); }
+.rb-template-ditto .rb-header .rb-contact { grid-area: contact; padding: calc(var(--rb-gap-y) * 1.5) var(--rb-margin-x) 0; column-gap: 0.65em; }
+/* The contact row already spaces the band from the columns. */
+.rb-template-ditto .rb-header + .rb-columns > .rb-col { padding-top: calc(var(--rb-gap-y) * 2); }
+.rb-template-ditto .rb-contact-item + .rb-contact-item::before { content: none; }
+.rb-template-ditto .rb-header > .rb-picture { position: relative; z-index: 1; }
+
+/* --- Glalie: tinted full-height sidebar holding a centered header ------------------------------- */
+.rb-template-glalie .rb-sidebar { background: color-mix(in srgb, var(--rb-primary) 36%, var(--rb-bg)); }
+.rb-template-glalie .rb-header { text-align: center; }
+.rb-template-glalie .rb-header .rb-contact { border: 1px solid var(--rb-primary); padding: calc(var(--rb-gap-x) * 0.75); text-align: left; margin-top: calc(var(--rb-gap-y) * 0.5); }
+
+/* --- Chikorita: solid accent sidebar on the right with inverted text ---------------------------- */
+.rb-template-chikorita .rb-sidebar { background: var(--rb-primary); color: var(--rb-bg); --rb-accent: var(--rb-bg); }
+.rb-template-chikorita .rb-heading { font-size: calc(var(--rb-size-heading) * 0.85); }
+.rb-template-chikorita .rb-header .rb-contact { column-gap: 0.65em; }
+.rb-template-chikorita .rb-contact-item + .rb-contact-item::before { content: none; }
+
+/* --- Pikachu: picture atop the sidebar, accent header box over the main column ----------------- */
+.rb-template-pikachu .rb-header {
+  background: var(--rb-primary);
+  color: var(--rb-bg);
+  border-radius: var(--rb-card-radius);
+  padding: var(--rb-margin-y) var(--rb-margin-x);
+}
+.rb-template-pikachu .rb-identity { border-bottom: 1px solid var(--rb-bg); padding-bottom: calc(var(--rb-gap-y) * 0.5); }
+.rb-template-pikachu .rb-header .rb-contact { column-gap: 0.75em; }
+.rb-template-pikachu .rb-contact-item + .rb-contact-item::before { content: none; }
+
+/* --- Gengar / Ditgar: tinted sidebar with an accent header box, featured summary ---------------- */
+.rb-template-gengar .rb-sidebar,
+.rb-template-ditgar .rb-sidebar { background: var(--rb-tint); }
+.rb-template-gengar .rb-heading,
+.rb-template-ditgar .rb-heading { font-size: calc(var(--rb-size-heading) * 0.9); }
+.rb-template-gengar .rb-sidebar .rb-header,
+.rb-template-ditgar .rb-sidebar .rb-header {
+  background: var(--rb-primary);
+  color: var(--rb-bg);
+  margin: calc(var(--rb-margin-y) * -1) calc(var(--rb-margin-x) * -1) 0;
+  padding: var(--rb-margin-y) var(--rb-margin-x);
+  align-items: flex-start;
+}
+.rb-template-gengar .rb-header-picture-top > .rb-picture,
+.rb-template-ditgar .rb-header-picture-top > .rb-picture { align-self: flex-start; }
+.rb-template-gengar .rb-featured,
+.rb-template-ditgar .rb-featured {
+  background: var(--rb-tint);
+  margin: calc(var(--rb-margin-y) * -1) calc(var(--rb-margin-x) * -1) 0;
+  padding: var(--rb-margin-y) var(--rb-margin-x);
+}
+/* Ditgar: entry headers in the main column hang on an accent rule in the gutter. */
+.rb-template-ditgar .rb-main [data-entry] .rb-entry-head {
+  border-left: 2pt solid var(--rb-primary);
+  padding: 0.1em 0 0.1em 0.5em;
+  margin-left: calc(-0.5em - 2pt);
+}
+
+/* --- Preview chrome and printing ----------------------------------------------------------------- */
 
 /* Off-screen full-length render that paginate.ts measures. */
 .rb-measure { position: fixed; top: 0; left: -10000px; visibility: hidden; pointer-events: none; }

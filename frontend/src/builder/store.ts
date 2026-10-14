@@ -105,7 +105,7 @@ export const useBuilder = create<BuilderState>()((set, get) => ({
 /** Debounced autosave: one request at a time; changes made during a request are sent right after it. */
 const saver = (() => {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let inFlight = false;
+  let inFlight: Promise<void> | null = null;
   let saved: { name: string; data: ResumeData | null } = { name: "", data: null };
 
   const isDirty = () => {
@@ -113,11 +113,9 @@ const saver = (() => {
     return name !== saved.name || data !== saved.data;
   };
 
-  async function flush() {
-    timer = undefined;
+  async function save() {
     const { id, name, data } = useBuilder.getState();
-    if (!id || !data || inFlight || !isDirty()) return;
-    inFlight = true;
+    if (!id || !data) return;
     useBuilder.setState({ status: "saving" });
     try {
       // An empty name isn't valid server-side; the data is still saved.
@@ -126,10 +124,28 @@ const saver = (() => {
       useBuilder.setState({ status: isDirty() ? "pending" : "saved" });
     } catch {
       useBuilder.setState({ status: "error" });
-    } finally {
-      inFlight = false;
     }
+  }
+
+  async function flush() {
+    timer = undefined;
+    if (inFlight || !isDirty()) return;
+    inFlight = save().finally(() => (inFlight = null));
+    await inFlight;
     if (isDirty() && useBuilder.getState().status !== "error") schedule();
+  }
+
+  /** Resolves once everything typed so far is on the server (e.g. before the PDF export). */
+  async function saveNow() {
+    clearTimeout(timer);
+    while (inFlight || isDirty()) {
+      if (inFlight) await inFlight;
+      else {
+        inFlight = save().finally(() => (inFlight = null));
+        await inFlight;
+      }
+      if (useBuilder.getState().status === "error") throw new Error("Speichern fehlgeschlagen.");
+    }
   }
 
   function schedule() {
@@ -141,6 +157,7 @@ const saver = (() => {
   return {
     schedule,
     flush,
+    saveNow,
     isDirty,
     reset: (name: string, data: ResumeData) => {
       clearTimeout(timer);
@@ -150,4 +167,5 @@ const saver = (() => {
 })();
 
 export const flushSave = () => saver.flush();
+export const saveNow = () => saver.saveNow();
 export const hasUnsavedChanges = () => saver.isDirty();

@@ -19,6 +19,19 @@ export const api = {
       body: JSON.stringify(update),
     }),
   deleteResume: (id: string) => request<void>(`/resumes/${id}`, { method: "DELETE" }),
+  uploadPicture: (resumeId: string, file: Blob) => {
+    const form = new FormData();
+    form.append("file", file, "picture");
+    return request<{ url: string }>(`/resumes/${resumeId}/picture`, { method: "POST", body: form });
+  },
+  downloadPdf: async (resumeId: string): Promise<Blob> => {
+    const res = await fetch(`/api/resumes/${resumeId}/pdf`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.detail ?? `Fehler ${res.status}`);
+    }
+    return res.blob();
+  },
   importResume: (file: File) => {
     const form = new FormData();
     form.append("file", file);

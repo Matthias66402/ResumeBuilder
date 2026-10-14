@@ -33,6 +33,8 @@ function cssVariables(data: ResumeData): CSSProperties {
     "--rb-gap-y": `${page.gapY}pt`,
     "--rb-sidebar-width": `${layout.sidebarWidth}%`,
     "--rb-link-decoration": page.hideLinkUnderline ? "none" : "underline",
+    // Lapras and Pikachu round their cards like the picture (capped as in Reactive Resume).
+    "--rb-card-radius": `${Math.min(data.picture.borderRadius, 30)}pt`,
   } as CSSProperties;
 }
 
@@ -53,7 +55,7 @@ function useFontsLoaded() {
 }
 
 export default function ResumePreview({ data, zoom = 1 }: { data: ResumeData; zoom?: number }) {
-  const { Component, id } = getTemplate(data.metadata.template);
+  const { Component, id, bleed } = getTemplate(data.metadata.template);
   const size = PAGE_SIZES[data.metadata.page.format] ?? PAGE_SIZES.a4;
   const paginated = Number.isFinite(size.heightPx);
   const vars = cssVariables(data);
@@ -74,7 +76,7 @@ export default function ResumePreview({ data, zoom = 1 }: { data: ResumeData; zo
   const sheet = (s: Sheet, key: string | number, height: string) => (
     <article
       key={key}
-      className={`rb-sheet rb-template-${id}`}
+      className={`rb-sheet rb-template-${id}${bleed ? " rb-sheet-bleed" : ""}`}
       style={{ ...vars, width: size.width, height: paginated ? height : undefined }}
       lang={data.metadata.page.locale}
     >
@@ -89,6 +91,8 @@ export default function ResumePreview({ data, zoom = 1 }: { data: ResumeData; zo
 
   return (
     <>
+      {/* Printed page size from metadata.page.format; the sheets bring their own margins. */}
+      <style>{`@page { size: ${size.css}; margin: 0; }`}</style>
       {paginated && (
         <div ref={measureRoot} className="rb-measure" aria-hidden>
           {unsplit(data).map((s) => sheet(s, s.pageIndex, "auto"))}

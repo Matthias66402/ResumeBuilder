@@ -194,8 +194,23 @@ export interface Metadata {
   styleRules: unknown[];
 }
 
+export interface Picture {
+  hidden: boolean;
+  fit: "cover" | "contain";
+  url: string;
+  /** Width in pt; the height is size / aspectRatio. */
+  size: number;
+  rotation: number;
+  aspectRatio: number;
+  borderRadius: number;
+  borderColor: string;
+  borderWidth: number;
+  shadowColor: string;
+  shadowWidth: number;
+}
+
 export interface ResumeData {
-  picture: Record<string, unknown>;
+  picture: Picture;
   basics: {
     name: string;
     headline: string;

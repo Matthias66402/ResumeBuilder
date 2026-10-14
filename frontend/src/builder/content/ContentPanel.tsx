@@ -3,6 +3,7 @@ import type { ResumeData } from "../../types/resume";
 import RichTextField from "../fields/RichTextField";
 import { useBuilder } from "../store";
 import { IconButton, Icons, PanelSection, TextInput, inputClass } from "../ui";
+import PictureForm from "./PictureForm";
 import SectionPanel from "./SectionPanel";
 
 type BasicsKey = "name" | "headline" | "email" | "phone" | "location";
@@ -19,6 +20,7 @@ function BasicsForm({ basics }: { basics: ResumeData["basics"] }) {
   const update = useBuilder((s) => s.update);
   return (
     <PanelSection title="Persönliche Daten">
+      <PictureForm />
       <div className="grid grid-cols-2 gap-3">
         {BASICS.map(({ key, label, half }) => (
           <TextInput

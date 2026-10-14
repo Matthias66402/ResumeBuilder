@@ -68,15 +68,17 @@ class CustomField(CamelModel):
 class Picture(CamelModel):
     hidden: bool = False
     fit: Literal["cover", "contain"] = "cover"
+    # Uploaded pictures are served from /api/uploads/<id> (see routers/uploads.py).
     url: str = ""
-    size: float = 80
-    rotation: float = 0
-    aspect_ratio: float = 1
-    border_radius: float = 0
+    # Width in pt; the height follows from aspect_ratio (width / height). Ranges as in Reactive Resume.
+    size: float = Field(default=80, ge=32, le=512)
+    rotation: float = Field(default=0, ge=0, le=360)
+    aspect_ratio: float = Field(default=1, ge=0.5, le=2.5)
+    border_radius: float = Field(default=0, ge=0, le=100)
     border_color: str = "rgba(0, 0, 0, 0.5)"
-    border_width: float = 0
+    border_width: float = Field(default=0, ge=0)
     shadow_color: str = "rgba(0, 0, 0, 0.5)"
-    shadow_width: float = 0
+    shadow_width: float = Field(default=0, ge=0)
 
 
 class Basics(CamelModel):

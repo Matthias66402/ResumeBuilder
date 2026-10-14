@@ -1,8 +1,8 @@
 import { hexToRgba, rgbaToHex } from "../../lib/color";
-import { TEMPLATES } from "../../templates";
+import { TEMPLATES, type TemplateInfo } from "../../templates";
 import type { DateFormat, Metadata } from "../../types/resume";
 import { useBuilder } from "../store";
-import { inputClass, Label, PanelSection } from "../ui";
+import { inputClass, Label, PanelSection, Slider } from "../ui";
 import LayoutEditor from "./LayoutEditor";
 
 // Must match the Google Fonts <link> in index.html.
@@ -28,21 +28,6 @@ function useMetadata() {
   return [metadata, set] as const;
 }
 
-function Slider({ label, value, min, max, step = 1, unit = "", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (v: number) => void }) {
-  return (
-    <label className="block">
-      <span className="mb-1 flex justify-between text-xs font-medium text-slate-600">
-        {label}
-        <span className="font-normal text-slate-500">
-          {value}
-          {unit}
-        </span>
-      </span>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full" />
-    </label>
-  );
-}
-
 function TemplatePicker() {
   const [metadata, set] = useMetadata();
   return (
@@ -54,10 +39,10 @@ function TemplatePicker() {
             type="button"
             title={t.description}
             onClick={() => set((m) => void (m.template = t.id))}
-            className={`rounded-lg border-2 p-2 text-left ${metadata.template === t.id ? "border-blue-600 bg-blue-50" : "border-slate-200 hover:border-slate-400"}`}
+            className={`rounded-lg border-2 p-1.5 text-left ${metadata.template === t.id ? "border-blue-600 bg-blue-50" : "border-slate-200 hover:border-slate-400"}`}
           >
-            <TemplateThumb id={t.id} />
-            <p className="mt-1.5 text-xs font-medium">{t.name}</p>
+            <TemplateThumb thumb={t.thumb} />
+            <p className="mt-1 truncate text-xs font-medium">{t.name}</p>
           </button>
         ))}
       </div>
@@ -65,40 +50,66 @@ function TemplatePicker() {
   );
 }
 
-/** Schematic thumbnail of each template's layout. */
-function TemplateThumb({ id }: { id: string }) {
-  const bar = (w: string, extra = "") => <div className={`h-1 rounded bg-slate-300 ${extra}`} style={{ width: w }} />;
+/** Schematic page drawn from the template's layout traits (columns, sidebar fill, header style). */
+function TemplateThumb({ thumb }: { thumb: TemplateInfo["thumb"] }) {
+  const lines = (n: number, light = false) =>
+    Array.from({ length: n }, (_, i) => (
+      <div key={i} className={`h-1 rounded ${light ? "bg-white/70" : "bg-slate-300"}`} style={{ width: `${100 - ((i * 17) % 35)}%` }} />
+    ));
+  const heading = (light = false) => <div className={`h-1 w-2/5 rounded ${light ? "bg-white" : "bg-blue-400"}`} />;
+  const block = (light = false) => (
+    <div className="flex flex-col gap-0.5">
+      {heading(light)}
+      {lines(2, light)}
+    </div>
+  );
+  const header = (
+    <div
+      className={`flex flex-col gap-0.5 ${thumb.header === "centered" ? "items-center" : ""} ${
+        thumb.header === "band" ? "-mx-1.5 -mt-1.5 bg-blue-400 px-1.5 py-1" : thumb.header === "box" ? "rounded-sm bg-blue-400 p-1" : ""
+      }`}
+    >
+      <div className={`h-1.5 w-1/2 rounded ${thumb.header === "band" || thumb.header === "box" ? "bg-white" : "bg-slate-500"}`} />
+      <div className={`h-1 w-1/3 rounded ${thumb.header === "band" || thumb.header === "box" ? "bg-white/70" : "bg-slate-300"}`} />
+    </div>
+  );
+
+  if (thumb.columns === 1) {
+    return (
+      <div className="flex aspect-[210/297] flex-col gap-1.5 overflow-hidden rounded border border-slate-200 bg-white p-1.5">
+        {header}
+        {block()}
+        {block()}
+        {block()}
+      </div>
+    );
+  }
+
+  const solid = thumb.sidebar === "solid";
+  const sidebarBg = solid ? "bg-blue-400" : thumb.sidebar === "tint" ? "bg-blue-100" : "";
+  const headerInSidebar = thumb.sidebar === "tint" && thumb.header !== "band";
+  const sidebar = (
+    <div className={`flex w-[35%] flex-col gap-1.5 p-1 ${sidebarBg}`}>
+      {headerInSidebar && header}
+      {block(solid)}
+      {block(solid)}
+    </div>
+  );
+  const main = (
+    <div className="flex flex-1 flex-col gap-1.5 p-1">
+      {!headerInSidebar && thumb.header !== "band" && thumb.header !== "centered" && header}
+      {block()}
+      {block()}
+      {block()}
+    </div>
+  );
   return (
-    <div className="flex aspect-[210/297] flex-col gap-1 rounded border border-slate-200 bg-white p-1.5">
-      {id === "azurill" ? (
-        <>
-          <div className="mx-auto h-1.5 w-1/2 rounded bg-blue-400" />
-          <div className="flex flex-1 gap-1">
-            <div className="flex w-1/3 flex-col gap-1">{bar("100%")}{bar("80%")}{bar("90%")}</div>
-            <div className="flex flex-1 flex-col gap-1">{bar("100%")}{bar("100%")}{bar("70%")}{bar("100%")}</div>
-          </div>
-        </>
-      ) : id === "bronzor" ? (
-        <>
-          <div className="h-1.5 w-1/2 rounded border-l-2 border-blue-400 bg-slate-400" />
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex gap-1">
-              <div className="h-1 w-1/4 rounded bg-blue-300" />
-              <div className="flex flex-1 flex-col gap-0.5">{bar("100%")}{bar("80%")}</div>
-            </div>
-          ))}
-        </>
-      ) : (
-        <>
-          <div className="h-1.5 w-1/2 rounded bg-slate-400" />
-          <div className="h-0.5 w-full bg-blue-400" />
-          {bar("40%", "bg-blue-300")}
-          {bar("100%")}
-          {bar("90%")}
-          {bar("40%", "bg-blue-300")}
-          {bar("100%")}
-        </>
-      )}
+    <div className="flex aspect-[210/297] flex-col overflow-hidden rounded border border-slate-200 bg-white">
+      {(thumb.header === "band" || thumb.header === "centered") && <div className="p-1.5 pb-0">{header}</div>}
+      <div className={`flex flex-1 ${thumb.side === "right" ? "flex-row-reverse" : ""}`}>
+        {sidebar}
+        {main}
+      </div>
     </div>
   );
 }

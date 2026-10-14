@@ -48,6 +48,21 @@ export function PanelSection({ title, children }: { title: string; children: Rea
   );
 }
 
+export function Slider({ label, value, min, max, step = 1, unit = "", onChange }: { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (v: number) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1 flex justify-between text-xs font-medium text-slate-600">
+        {label}
+        <span className="font-normal text-slate-500">
+          {value}
+          {unit}
+        </span>
+      </span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full" />
+    </label>
+  );
+}
+
 // Small inline icons (stroke-based, 16px), so no icon library is needed.
 const icon = (d: ReactNode) =>
   function Icon({ className = "h-4 w-4" }: { className?: string }) {
@@ -70,6 +85,7 @@ export const Icons = {
   Redo: icon(<><path d="m15 14 5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></>),
   ArrowLeft: icon(<><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></>),
   Printer: icon(<><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" /></>),
+  Download: icon(<><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></>),
   Code: icon(<><path d="m16 18 6-6-6-6" /><path d="m8 6-6 6 6 6" /></>),
   Bold: icon(<><path d="M6 4h8a4 4 0 0 1 0 8H6z" /><path d="M6 12h9a4 4 0 0 1 0 8H6z" /></>),
   Italic: icon(<><path d="M19 4h-9" /><path d="M14 20H5" /><path d="M15 4 9 20" /></>),

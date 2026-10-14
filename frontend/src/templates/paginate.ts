@@ -10,10 +10,11 @@
 import type { Sheet } from "./shared/sheet";
 
 export function paginate(sheetEl: HTMLElement, pageIndex: number, pageHeightPx: number): Sheet[] {
-  const style = getComputedStyle(sheetEl);
-  const paddingTop = parseFloat(style.paddingTop);
-  const contentTop = sheetEl.getBoundingClientRect().top + paddingTop;
-  const contentHeight = pageHeightPx - paddingTop - parseFloat(style.paddingBottom);
+  // The page margin, not the sheet's padding: full-bleed templates have no sheet padding and inset their
+  // columns by the margin themselves, on every sheet.
+  const marginY = (parseFloat(getComputedStyle(sheetEl).getPropertyValue("--rb-margin-y")) * 96) / 72;
+  const contentTop = sheetEl.getBoundingClientRect().top + marginY;
+  const contentHeight = pageHeightPx - 2 * marginY;
 
   const sheets: Set<string>[] = [new Set()];
 

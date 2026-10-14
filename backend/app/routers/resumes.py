@@ -1,7 +1,9 @@
+import re
 import uuid
 from pathlib import Path
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,6 +12,7 @@ from app.db import get_session
 from app.models import Resume
 from app.schemas.api import ResumeOut, ResumeSummary, ResumeUpdate
 from app.services.parser import ParseError, parse_resume_text
+from app.services.pdf_render import RenderError, render_resume_pdf
 from app.services.pdf_text import PdfError, extract_text
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
@@ -75,6 +78,23 @@ def update_resume(resume_id: uuid.UUID, update: ResumeUpdate, session: Session =
     session.commit()
     session.refresh(resume)
     return resume
+
+
+@router.get("/{resume_id}/pdf")
+def download_pdf(resume_id: uuid.UUID, session: Session = Depends(get_session)) -> Response:
+    resume = _get_or_404(session, resume_id)
+    try:
+        pdf = render_resume_pdf(str(resume.id))
+    except RenderError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    # ASCII fallback plus RFC 5987 name, so umlauts survive in the downloaded file name.
+    filename = f"{resume.name}.pdf"
+    ascii_name = re.sub(r"[^A-Za-z0-9._ -]", "_", filename)
+    return Response(
+        pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"},
+    )
 
 
 @router.delete("/{resume_id}", status_code=204)

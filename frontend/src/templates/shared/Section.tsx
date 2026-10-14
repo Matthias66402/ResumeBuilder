@@ -169,7 +169,8 @@ export function Section({ data, id, compact = false, render }: SectionProps) {
   );
 }
 
-export function Contact({ data, separator = " · " }: { data: ResumeData; separator?: string }) {
+/** Contact details: one wrapped line with separators, a vertical list, or a two-column grid (Porygon). */
+export function Contact({ data, variant = "inline" }: { data: ResumeData; variant?: "inline" | "list" | "grid" }) {
   const { email, phone, location, website } = data.basics;
   const parts: ReactNode[] = [
     location && <span key="l">{location}</span>,
@@ -186,13 +187,12 @@ export function Contact({ data, separator = " · " }: { data: ResumeData; separa
     ),
   ].filter(Boolean);
   return (
-    <p className="rb-contact">
+    <div className={`rb-contact rb-contact-${variant}`}>
       {parts.map((part, i) => (
-        <span key={i}>
-          {i > 0 && <span className="rb-sep">{separator}</span>}
+        <span key={i} className="rb-contact-item">
           {part}
         </span>
       ))}
-    </p>
+    </div>
   );
 }

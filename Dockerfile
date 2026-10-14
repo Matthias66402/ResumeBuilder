@@ -13,7 +13,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     STATIC_DIR=/app/static
 WORKDIR /app
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Playwright's headless Chromium (plus its system libraries) renders the PDF download, see app/services/pdf_render.py
+RUN pip install --no-cache-dir -r requirements.txt \
+    && playwright install --with-deps --only-shell chromium
 COPY backend/ ./
 COPY --from=frontend /frontend/dist ./static
 EXPOSE 8000

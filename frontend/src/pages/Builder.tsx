@@ -3,9 +3,9 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import ContentPanel from "../builder/content/ContentPanel";
 import DesignPanel from "../builder/design/DesignPanel";
-import { flushSave, hasUnsavedChanges, useBuilder, type SaveStatus } from "../builder/store";
+import { flushSave, hasUnsavedChanges, saveNow, useBuilder, type SaveStatus } from "../builder/store";
 import { IconButton, Icons } from "../builder/ui";
-import ResumePreview, { PAGE_SIZES } from "../templates/ResumePreview";
+import ResumePreview from "../templates/ResumePreview";
 
 const MM_TO_PX = 96 / 25.4;
 const SHEET_WIDTH_PX = { a4: 210 * MM_TO_PX, letter: 8.5 * 96, "free-form": 210 * MM_TO_PX };
@@ -54,8 +54,32 @@ function JsonDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** Saves pending edits, then downloads the PDF the server renders from the saved resume. */
+function useDownloadPdf() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const download = async () => {
+    const { id, name } = useBuilder.getState();
+    if (!id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await saveNow();
+      const url = URL.createObjectURL(await api.downloadPdf(id));
+      Object.assign(document.createElement("a"), { href: url, download: `${name.trim() || "Lebenslauf"}.pdf` }).click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, error, download, dismiss: () => setError(null) };
+}
+
 function TopBar({ zoom, setZoom, onJson }: { zoom: number | "fit"; setZoom: (z: number | "fit") => void; onJson: () => void }) {
   const { name, status, past, future, rename, undo, redo } = useBuilder();
+  const pdf = useDownloadPdf();
   const { text, className } = STATUS[status];
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 print:hidden">
@@ -99,18 +123,29 @@ function TopBar({ zoom, setZoom, onJson }: { zoom: number | "fit"; setZoom: (z: 
         <IconButton title="JSON anzeigen" onClick={onJson}>
           <Icons.Code />
         </IconButton>
-        <button type="button" onClick={() => window.print()} className="ml-1 inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">
-          <Icons.Printer /> <span className="hidden sm:inline">PDF drucken</span>
+        <IconButton title="Drucken" onClick={() => window.print()}>
+          <Icons.Printer />
+        </IconButton>
+        <button
+          type="button"
+          onClick={pdf.download}
+          disabled={pdf.busy}
+          className="ml-1 inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-wait disabled:opacity-70"
+        >
+          {pdf.busy ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Icons.Download />}
+          <span className="hidden sm:inline">{pdf.busy ? "Erstelle PDF …" : "PDF herunterladen"}</span>
         </button>
+        {pdf.error && (
+          <div role="alert" className="fixed top-16 right-4 z-50 flex max-w-sm items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 shadow-lg">
+            <span className="flex-1">{pdf.error}</span>
+            <IconButton title="Schließen" onClick={pdf.dismiss}>
+              <Icons.X />
+            </IconButton>
+          </div>
+        )}
       </div>
     </header>
   );
-}
-
-/** Sets the printed page size from metadata.page.format (Reactive Resume: A4, Letter). */
-function PrintPageStyle() {
-  const format = useBuilder((s) => s.data!.metadata.page.format);
-  return <style>{`@page { size: ${PAGE_SIZES[format]?.css ?? "A4"}; margin: 0; }`}</style>;
 }
 
 export default function Builder() {
@@ -175,7 +210,6 @@ export default function Builder() {
 
   return (
     <div className="flex h-screen flex-col bg-slate-100 print:block print:h-auto print:bg-white">
-      <PrintPageStyle />
       <TopBar zoom={zoom} setZoom={setZoom} onJson={() => setShowJson(true)} />
 
       <nav className="flex border-b border-slate-200 bg-white xl:hidden print:hidden">

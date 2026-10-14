@@ -1,3 +1,6 @@
+import json
+from types import SimpleNamespace
+
 import pymupdf
 import pytest
 from fastapi.testclient import TestClient
@@ -7,6 +10,8 @@ from sqlalchemy.pool import StaticPool
 
 from app.db import Base, get_session
 from app.main import app
+from app.routers import resumes as resumes_router
+from app.services import parser
 
 
 @pytest.fixture
@@ -34,3 +39,32 @@ def sample_pdf() -> bytes:
         "Max Mustermann\nSoftware Engineer\nmax@example.com\n\nBerufserfahrung\nACME GmbH, 03/2020 - heute",
     )
     return doc.tobytes()
+
+
+class FakeGroq:
+    """Returns a canned extraction and records the prompt it was given."""
+
+    def __init__(self, payload: dict):
+        self.payload = payload
+        self.calls: list[dict] = []
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
+
+    def _create(self, **kwargs):
+        self.calls.append(kwargs)
+        message = SimpleNamespace(content=json.dumps(self.payload))
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+
+@pytest.fixture
+def fake_groq(monkeypatch):
+    fake = FakeGroq(
+        {
+            "language": "de",
+            "basics": {"name": "Max Mustermann", "headline": "Software Engineer", "email": "max@example.com"},
+            "experience": [
+                {"company": "ACME GmbH", "dates": {"start": "2020-03", "present": True, "text": "03/2020 - heute"}}
+            ],
+        }
+    )
+    monkeypatch.setattr(resumes_router, "parse_resume_text", lambda text: parser.parse_resume_text(text, fake))
+    return fake
