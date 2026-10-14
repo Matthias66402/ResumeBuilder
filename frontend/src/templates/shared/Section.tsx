@@ -184,6 +184,9 @@ export function Section({ data, id, compact = false, render }: SectionProps) {
   );
 }
 
+/** Links typed without a scheme ("xing.com/…") would resolve relative to the app; treat them as https. */
+const absoluteLink = (link: string) => (/^[a-z][a-z0-9+.-]*:/i.test(link) ? link : `https://${link.replace(/^\/+/, "")}`);
+
 /** Contact details: one wrapped line, a vertical list, or a two-column grid (Porygon); icons as in Reactive Resume. */
 export function Contact({ data, variant = "inline", emailIcon = "envelope" }: { data: ResumeData; variant?: "inline" | "list" | "grid"; emailIcon?: string }) {
   const { email, phone, location, website, customFields } = data.basics;
@@ -216,8 +219,8 @@ export function Contact({ data, variant = "inline", emailIcon = "envelope" }: { 
     items.push({
       key: field.id,
       icon: field.icon,
-      content: field.link ? (
-        <a className="rb-link" href={field.link} target="_blank" rel="noreferrer">
+      content: field.link.trim() ? (
+        <a className="rb-link" href={absoluteLink(field.link.trim())} target="_blank" rel="noreferrer">
           {field.text}
         </a>
       ) : (

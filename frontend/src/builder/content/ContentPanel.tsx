@@ -4,6 +4,7 @@ import SectionIconField from "../fields/SectionIconField";
 import RichTextField from "../fields/RichTextField";
 import { useBuilder } from "../store";
 import { IconButton, Icons, PanelSection, TextInput, inputClass } from "../ui";
+import CustomFieldsEditor from "./CustomFieldsEditor";
 import PictureForm from "./PictureForm";
 import SectionPanel from "./SectionPanel";
 
@@ -35,6 +36,7 @@ function BasicsForm({ basics }: { basics: ResumeData["basics"] }) {
         <TextInput label="Website" placeholder="https://" value={basics.website.url} onChange={(e) => update((d) => void (d.basics.website.url = e.target.value), "basics:website.url")} />
         <TextInput label="Link-Text" placeholder="optional" value={basics.website.label} onChange={(e) => update((d) => void (d.basics.website.label = e.target.value), "basics:website.label")} />
       </div>
+      <CustomFieldsEditor />
     </PanelSection>
   );
 }
