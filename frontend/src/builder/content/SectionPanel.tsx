@@ -2,8 +2,10 @@ import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "../dnd";
 import { useState } from "react";
+import { networkIcon } from "../../lib/icons";
 import { defaultTitle } from "../../templates/shared/labels";
 import type { SectionKey } from "../../types/resume";
+import SectionIconField from "../fields/SectionIconField";
 import { SECTION_FIELDS, type AnyItem } from "../sectionFields";
 import { useBuilder } from "../store";
 import { IconButton, Icons, inputClass } from "../ui";
@@ -68,15 +70,18 @@ export default function SectionPanel({ sectionKey }: { sectionKey: SectionKey })
 
       {expanded && (
         <div className="space-y-2 px-3 pb-3">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-600">Überschrift</span>
-            <input
-              value={section.title}
-              placeholder={defaultTitle(sectionKey, locale)}
-              onChange={(e) => update((d) => void (d.sections[sectionKey].title = e.target.value), `${sectionKey}:title`)}
-              className={inputClass}
-            />
-          </label>
+          <div className="flex items-start gap-2">
+            <SectionIconField value={section.icon} setIcon={(d, icon) => void (d.sections[sectionKey].icon = icon)} />
+            <label className="block flex-1">
+              <span className="mb-1 block text-xs font-medium text-slate-600">Überschrift</span>
+              <input
+                value={section.title}
+                placeholder={defaultTitle(sectionKey, locale)}
+                onChange={(e) => update((d) => void (d.sections[sectionKey].title = e.target.value), `${sectionKey}:title`)}
+                className={inputClass}
+              />
+            </label>
+          </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
             <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
               {items.map((item) => (
@@ -89,7 +94,12 @@ export default function SectionPanel({ sectionKey }: { sectionKey: SectionKey })
                   onChange={(key, value) =>
                     editItems((list) => {
                       const target = list.find((i) => i.id === item.id);
-                      if (target) target[key] = value;
+                      if (!target) return;
+                      // Profiles follow their network's logo until an icon is picked by hand.
+                      if (sectionKey === "profiles" && key === "network" && (!target.icon || target.icon === networkIcon(target.network))) {
+                        target.icon = networkIcon(String(value));
+                      }
+                      target[key] = value;
                     }, `${item.id}:${key}`)
                   }
                   onToggleHidden={() =>

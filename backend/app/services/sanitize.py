@@ -35,6 +35,36 @@ MONTHS = {
 PRESENT = {"en": "Present", "de": "Heute"}
 URL_SCHEME_RE = re.compile(r"^[a-z][a-z0-9+.-]*://", re.IGNORECASE)
 
+# Phosphor logo per network, as the builder assigns them (frontend/src/lib/icons.ts).
+NETWORK_ICONS = {
+    "linkedin": "linkedin-logo",
+    "github": "github-logo",
+    "gitlab": "gitlab-logo",
+    "x": "x-logo",
+    "twitter": "twitter-logo",
+    "instagram": "instagram-logo",
+    "facebook": "facebook-logo",
+    "youtube": "youtube-logo",
+    "stackoverflow": "stack-overflow-logo",
+    "medium": "medium-logo",
+    "dribbble": "dribbble-logo",
+    "behance": "behance-logo",
+    "mastodon": "mastodon-logo",
+    "threads": "threads-logo",
+    "tiktok": "tiktok-logo",
+    "reddit": "reddit-logo",
+    "discord": "discord-logo",
+    "telegram": "telegram-logo",
+    "whatsapp": "whatsapp-logo",
+    "codepen": "codepen-logo",
+    "figma": "figma-logo",
+}
+
+
+def network_icon(network: str) -> str:
+    key = re.sub(r"[^a-z]", "", network.lower())
+    return NETWORK_ICONS.get(key, "globe") if key else ""
+
 
 def to_dates(d: x.XDates) -> ResumeDates:
     dates = ResumeDates(start=d.start, end=d.end, present=d.present)
@@ -80,6 +110,8 @@ def sanitize(ex: x.ExtractedResume) -> ResumeData:
 
     data = ResumeData()
     data.metadata.page.locale = LOCALES[lang]
+    # Imported resumes show section heading icons; Reactive Resume's own default hides them.
+    data.metadata.page.hide_section_icons = False
 
     b = ex.basics
     data.basics.name = b.name.strip()
@@ -93,7 +125,7 @@ def sanitize(ex: x.ExtractedResume) -> ResumeData:
     s = data.sections
     # Each comprehension drops items whose required field is empty (drafts in Reactive Resume).
     s.profiles.items = [
-        ProfileItem(network=p.network, username=p.username, website=to_website(p.url))
+        ProfileItem(icon=network_icon(p.network), network=p.network, username=p.username, website=to_website(p.url))
         for p in ex.profiles
         if p.network.strip()
     ]

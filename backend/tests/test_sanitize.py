@@ -13,6 +13,7 @@ def test_empty_extraction_gives_reactive_resume_defaults():
     assert data["sections"]["experience"]["icon"] == "briefcase"
     assert data["sections"]["skills"]["keywordLayout"] == "inline"
     assert data["metadata"]["template"] == "onyx"
+    assert data["metadata"]["page"]["hideSectionIcons"] is False
 
 
 def test_drops_items_without_required_field_and_assigns_ids():
@@ -57,6 +58,11 @@ def test_raw_is_omitted_when_absent():
 def test_urls_get_a_scheme():
     data = sanitize(extracted(profiles=[{"network": "GitHub", "username": "max", "url": "github.com/max"}]))
     assert data.sections.profiles.items[0].website.url == "https://github.com/max"
+
+
+def test_profiles_get_their_network_logo():
+    data = sanitize(extracted(profiles=[{"network": "LinkedIn"}, {"network": "Stack Overflow"}, {"network": "Xing"}]))
+    assert [p.icon for p in data.sections.profiles.items] == ["linkedin-logo", "stack-overflow-logo", "globe"]
 
 
 def test_output_round_trips_with_camel_case_keys():

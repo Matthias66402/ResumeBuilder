@@ -43,3 +43,7 @@ Ein Klick auf einen Lebenslauf öffnet `/resumes/:id`, aufgebaut nach dem Vorbil
 - **State** (`builder/store.ts`): Zustand + immer mit Undo/Redo (Strg+Z / Strg+Y). Gespeichert wird automatisch per `PUT /api/resumes/{id}`, jeweils das komplette `data`.
 - **Profilbild**: Wird im Browser auf höchstens 1024 px verkleinert und mit `POST /api/resumes/{id}/picture` hochgeladen. Gespeichert wird es in der Postgres-Tabelle `uploads`, ausgeliefert über `/api/uploads/{id}`. Im Lebenslauf selbst steht nur die URL (`picture.url`), wie bei Reactive Resume.
 - **PDF-Download**: `GET /api/resumes/{id}/pdf`. Playwright/Chromium öffnet dafür die Druckseite `/resumes/{id}/print` (`frontend/src/pages/PrintView.tsx`), die dieselbe paginierte Vorschau rendert, und speichert sie als PDF (`backend/app/services/pdf_render.py`). Vor dem Download speichert der Builder alle offenen Änderungen.
+- **Icons**: Phosphor-Icons wie bei Reactive Resume, eingebunden als Icon-Schrift (`@phosphor-icons/web`). Damit wird jeder gespeicherte Icon-Name dargestellt.
+  - **Wo:** Kontaktangaben bekommen feste Icons. Abschnitte, Profile, Kenntnisse und Interessen haben ein frei wählbares Icon (`icon`-Feld); Profile übernehmen das Logo ihres Netzwerks automatisch.
+  - **Picker:** Der Icon-Picker durchsucht den Phosphor-Katalog (`@phosphor-icons/core`). Der Katalog wird erst beim Öffnen geladen.
+  - **Schalter:** Unter Design → Seite (`metadata.page.hideIcons` / `hideSectionIcons`).

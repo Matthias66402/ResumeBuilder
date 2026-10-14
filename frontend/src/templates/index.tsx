@@ -57,12 +57,14 @@ interface HeaderProps {
   data: ResumeData;
   picture?: PicturePlacement;
   contact?: "inline" | "list" | "grid";
+  /** Ditgar uses "at" instead of the default envelope. */
+  emailIcon?: string;
   /** Extra content inside the header text block (Leafish puts the summary there). */
   children?: ReactNode;
 }
 
 /** Name, headline and contact. Only on the first sheet; templates style it via `.rb-header`. */
-function Header({ data, picture = "left", contact = "inline", children }: HeaderProps) {
+function Header({ data, picture = "left", contact = "inline", emailIcon, children }: HeaderProps) {
   if (!useSheet().showHeader) return null;
   return (
     <header className={`rb-header rb-header-picture-${picture}`}>
@@ -72,7 +74,7 @@ function Header({ data, picture = "left", contact = "inline", children }: Header
           <h1 className="rb-name">{data.basics.name}</h1>
           {data.basics.headline && <p className="rb-headline">{data.basics.headline}</p>}
         </div>
-        <Contact data={data} variant={contact} />
+        <Contact data={data} variant={contact} emailIcon={emailIcon} />
         {children}
       </div>
     </header>
@@ -86,13 +88,13 @@ function Unsplit({ children }: { children: ReactNode }) {
 }
 
 /** Summary without a heading, set apart at the top of the main column (Gengar, Ditgar, Smeargle). */
-const featured = (_heading: string | null, body: ReactNode) => <div className="rb-featured">{body}</div>;
+const featured = (_heading: ReactNode | null, body: ReactNode) => <div className="rb-featured">{body}</div>;
 
 interface FlowProps {
   data: ResumeData;
   ids: string[];
   compact?: boolean;
-  render?: (heading: string | null, body: ReactNode) => ReactNode;
+  render?: (heading: ReactNode | null, body: ReactNode) => ReactNode;
 }
 
 const Sections = ({ data, ids, compact, render }: FlowProps) => (
@@ -180,7 +182,7 @@ function TwoColumn({ data, page, side, top, mainTop, sidebarTop, featureSummary 
 // --- Templates ------------------------------------------------------------------------------------
 
 /** Bronzor: section heading in a narrow label column. */
-const labelRow = (heading: string | null, body: ReactNode) => (
+const labelRow = (heading: ReactNode | null, body: ReactNode) => (
   <div className="rb-row">
     <h2 className="rb-heading">{heading}</h2>
     <div>{body}</div>
@@ -225,7 +227,7 @@ const Gengar = (p: TemplateProps) => (
   <TwoColumn {...p} side="left" sidebarTop={<Header data={p.data} picture="top" contact="list" />} featureSummary />
 );
 const Ditgar = (p: TemplateProps) => (
-  <TwoColumn {...p} side="left" sidebarTop={<Header data={p.data} picture="top" contact="list" />} featureSummary />
+  <TwoColumn {...p} side="left" sidebarTop={<Header data={p.data} picture="top" contact="list" emailIcon="at" />} featureSummary />
 );
 
 export interface TemplateInfo {

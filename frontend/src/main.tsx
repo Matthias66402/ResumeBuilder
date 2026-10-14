@@ -1,6 +1,7 @@
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import "@phosphor-icons/web/regular";
 import "./index.css";
 import ResumeList from "./pages/ResumeList";
 

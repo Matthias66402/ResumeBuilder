@@ -6,6 +6,7 @@ import DOMPurify from "dompurify";
 import type { ReactNode } from "react";
 import { SECTION_FIELDS, type AnyItem } from "../../builder/sectionFields";
 import type { ItemWebsite, ResumeData, SectionKey } from "../../types/resume";
+import Icon from "./Icon";
 import { sectionTitle } from "./labels";
 import { entryKey, isOnSheet, useSheet } from "./sheet";
 
@@ -19,6 +20,9 @@ interface Entry {
   description?: string;
   keywords?: string[];
   level?: number;
+  /** Item icon (profiles, skills, interests) and its optional custom color. */
+  icon?: string;
+  iconColor?: string;
   children?: Entry[];
 }
 
@@ -38,14 +42,14 @@ const ENTRY: Record<SectionKey, (i: any) => Omit<Entry, "id">> = {
   }),
   education: (i) => ({ title: i.school, subtitle: join(i.degree, i.area, i.grade), meta: i.period, location: i.location, website: i.website, description: i.description }),
   projects: (i) => ({ title: i.name, meta: i.period, website: i.website, description: i.description }),
-  skills: (i) => ({ title: i.name, subtitle: i.proficiency, keywords: i.keywords, level: i.level }),
+  skills: (i) => ({ title: i.name, subtitle: i.proficiency, keywords: i.keywords, level: i.level, icon: i.icon, iconColor: i.iconColor }),
   languages: (i) => ({ title: i.language, subtitle: i.fluency, level: i.level }),
-  interests: (i) => ({ title: i.name, keywords: i.keywords }),
+  interests: (i) => ({ title: i.name, keywords: i.keywords, icon: i.icon, iconColor: i.iconColor }),
   awards: (i) => ({ title: i.title, subtitle: i.awarder, meta: i.date, website: i.website, description: i.description }),
   certifications: (i) => ({ title: i.title, subtitle: i.issuer, meta: i.date, website: i.website, description: i.description }),
   publications: (i) => ({ title: i.title, subtitle: i.publisher, meta: i.date, website: i.website, description: i.description }),
   volunteer: (i) => ({ title: i.organization, meta: i.period, location: i.location, website: i.website, description: i.description }),
-  profiles: (i) => ({ title: i.network, subtitle: i.username, website: i.website }),
+  profiles: (i) => ({ title: i.network, subtitle: i.username, website: i.website, icon: i.icon, iconColor: i.iconColor }),
   references: (i) => ({ title: i.name, subtitle: join(i.position, i.phone), website: i.website, description: i.description }),
 };
 
@@ -88,12 +92,15 @@ function Website({ website }: { website?: ItemWebsite }) {
   );
 }
 
-function EntryView({ entry, compact }: { entry: Entry; compact: boolean }) {
+function EntryView({ entry, compact, icons }: { entry: Entry; compact: boolean; icons: boolean }) {
   return (
     <div className="rb-entry">
       <div className="rb-entry-head">
         <div className="rb-entry-title">
-          <strong>{entry.title}</strong>
+          <strong className="rb-entry-name">
+            {icons && entry.icon && <Icon name={entry.icon} color={entry.iconColor || undefined} />}
+            {entry.title}
+          </strong>
           {entry.subtitle && <span className="rb-entry-subtitle">{entry.subtitle}</span>}
         </div>
         {!compact && (entry.meta || entry.location) && (
@@ -111,7 +118,7 @@ function EntryView({ entry, compact }: { entry: Entry; compact: boolean }) {
       {!!entry.children?.length && (
         <div className="rb-roles">
           {entry.children.map((child) => (
-            <EntryView key={child.id} entry={child} compact={compact} />
+            <EntryView key={child.id} entry={child} compact={compact} icons={icons} />
           ))}
         </div>
       )}
@@ -125,12 +132,13 @@ interface SectionProps {
   /** Sidebar sections stack meta under the title, since the column is narrow. */
   compact?: boolean;
   /** Templates can wrap heading and body differently (e.g. Bronzor's label column). The heading is null on a continuation sheet. */
-  render?: (heading: string | null, body: ReactNode) => ReactNode;
+  render?: (heading: ReactNode | null, body: ReactNode) => ReactNode;
 }
 
 export function Section({ data, id, compact = false, render }: SectionProps) {
   const sheet = useSheet();
   if (!isSectionVisible(data, id)) return null;
+  const { hideIcons, hideSectionIcons } = data.metadata.page;
 
   // Each entry (or the whole summary) is one unit the paginator may move to the next sheet; `data-entry` marks it for measuring.
   const units =
@@ -138,13 +146,20 @@ export function Section({ data, id, compact = false, render }: SectionProps) {
       ? [{ key: entryKey("summary", "summary"), node: <Html html={data.summary.content} /> }]
       : visibleEntries(data, id as SectionKey).map((entry) => ({
           key: entryKey(id, entry.id),
-          node: <EntryView entry={entry} compact={compact} />,
+          node: <EntryView entry={entry} compact={compact} icons={!hideIcons} />,
         }));
   const onSheet = units.filter((u) => isOnSheet(sheet, u.key));
   if (!onSheet.length) return null;
 
   // The heading goes with the section's first entry; a section continued from the previous sheet has none.
-  const heading = onSheet[0].key === units[0].key ? sectionTitle(data, id as SectionKey | "summary") : null;
+  const sectionIcon = id === "summary" ? data.summary.icon : data.sections[id as SectionKey].icon;
+  const heading =
+    onSheet[0].key === units[0].key ? (
+      <>
+        {!hideSectionIcons && sectionIcon && <Icon name={sectionIcon} className="rb-section-icon" />}
+        {sectionTitle(data, id as SectionKey | "summary")}
+      </>
+    ) : null;
   const body = (
     <div className="rb-entries">
       {onSheet.map((u) => (
@@ -169,28 +184,54 @@ export function Section({ data, id, compact = false, render }: SectionProps) {
   );
 }
 
-/** Contact details: one wrapped line with separators, a vertical list, or a two-column grid (Porygon). */
-export function Contact({ data, variant = "inline" }: { data: ResumeData; variant?: "inline" | "list" | "grid" }) {
-  const { email, phone, location, website } = data.basics;
-  const parts: ReactNode[] = [
-    location && <span key="l">{location}</span>,
-    phone && <span key="p">{phone}</span>,
-    email && (
-      <a key="e" className="rb-link" href={`mailto:${email}`}>
-        {email}
-      </a>
-    ),
-    website.url && (
-      <a key="w" className="rb-link" href={website.url} target="_blank" rel="noreferrer">
-        {website.label || website.url.replace(/^https?:\/\/(www\.)?/, "")}
-      </a>
-    ),
-  ].filter(Boolean);
+/** Contact details: one wrapped line, a vertical list, or a two-column grid (Porygon); icons as in Reactive Resume. */
+export function Contact({ data, variant = "inline", emailIcon = "envelope" }: { data: ResumeData; variant?: "inline" | "list" | "grid"; emailIcon?: string }) {
+  const { email, phone, location, website, customFields } = data.basics;
+  const showIcons = !data.metadata.page.hideIcons;
+  const items: { key: string; icon: string; content: ReactNode }[] = [];
+  if (location) items.push({ key: "location", icon: "map-pin", content: location });
+  if (phone) items.push({ key: "phone", icon: "phone", content: phone });
+  if (email)
+    items.push({
+      key: "email",
+      icon: emailIcon,
+      content: (
+        <a className="rb-link" href={`mailto:${email}`}>
+          {email}
+        </a>
+      ),
+    });
+  if (website.url)
+    items.push({
+      key: "website",
+      icon: "globe",
+      content: (
+        <a className="rb-link" href={website.url} target="_blank" rel="noreferrer">
+          {website.label || website.url.replace(/^https?:\/\/(www\.)?/, "")}
+        </a>
+      ),
+    });
+  for (const field of customFields) {
+    if (!field.text.trim()) continue;
+    items.push({
+      key: field.id,
+      icon: field.icon,
+      content: field.link ? (
+        <a className="rb-link" href={field.link} target="_blank" rel="noreferrer">
+          {field.text}
+        </a>
+      ) : (
+        field.text
+      ),
+    });
+  }
+
   return (
-    <div className={`rb-contact rb-contact-${variant}`}>
-      {parts.map((part, i) => (
-        <span key={i} className="rb-contact-item">
-          {part}
+    <div className={`rb-contact rb-contact-${variant} ${showIcons ? "rb-contact-icons" : ""}`}>
+      {items.map((item) => (
+        <span key={item.key} className="rb-contact-item">
+          {showIcons && <Icon name={item.icon} />}
+          <span>{item.content}</span>
         </span>
       ))}
     </div>

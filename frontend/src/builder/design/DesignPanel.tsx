@@ -211,6 +211,14 @@ function PagePanel() {
         <input type="checkbox" checked={page.hideLinkUnderline} onChange={(e) => set((m) => void (m.page.hideLinkUnderline = e.target.checked))} />
         Links nicht unterstreichen
       </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={!page.hideIcons} onChange={(e) => set((m) => void (m.page.hideIcons = !e.target.checked))} />
+        Icons bei Kontakt, Profilen, Kenntnissen
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={!page.hideSectionIcons} onChange={(e) => set((m) => void (m.page.hideSectionIcons = !e.target.checked))} />
+        Icons bei Abschnittsüberschriften
+      </label>
     </PanelSection>
   );
 }

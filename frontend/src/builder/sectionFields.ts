@@ -1,7 +1,7 @@
 /** Field configuration per section: the content editor renders all twelve sections from this. */
 import type { SectionKey } from "../types/resume";
 
-export type FieldType = "text" | "richtext" | "dates" | "keywords" | "level" | "url" | "roles";
+export type FieldType = "text" | "richtext" | "dates" | "keywords" | "level" | "url" | "roles" | "icon";
 
 export interface FieldDef {
   key: string;
@@ -34,6 +34,7 @@ const description: FieldDef = { key: "description", label: "Beschreibung", type:
 const website: FieldDef = { key: "website", label: "Website", type: "url" };
 const period: FieldDef = { key: "dates", label: "Zeitraum", type: "dates" };
 const date: FieldDef = { key: "dates", label: "Datum", type: "dates", single: true };
+const icon: FieldDef = { key: "icon", label: "Icon", type: "icon" };
 
 export const SECTION_FIELDS: Record<SectionKey, SectionConfig> = {
   experience: {
@@ -58,7 +59,7 @@ export const SECTION_FIELDS: Record<SectionKey, SectionConfig> = {
     defaults: () => ({ name: "", period: "", dates: emptyDates(), website: emptyWebsite(), description: "" }),
   },
   skills: {
-    fields: [text("name", "Name"), text("proficiency", "Niveau"), { key: "level", label: "Stufe", type: "level" }, { key: "keywords", label: "Schlagwörter", type: "keywords" }],
+    fields: [icon, text("name", "Name"), text("proficiency", "Niveau"), { key: "level", label: "Stufe", type: "level" }, { key: "keywords", label: "Schlagwörter", type: "keywords" }],
     required: "name",
     title: (i) => i.name,
     subtitle: (i) => join(i.proficiency, (i.keywords as string[]).join(", ")),
@@ -72,7 +73,7 @@ export const SECTION_FIELDS: Record<SectionKey, SectionConfig> = {
     defaults: () => ({ language: "", fluency: "", level: 0 }),
   },
   interests: {
-    fields: [text("name", "Name", false), { key: "keywords", label: "Schlagwörter", type: "keywords" }],
+    fields: [icon, text("name", "Name", false), { key: "keywords", label: "Schlagwörter", type: "keywords" }],
     required: "name",
     title: (i) => i.name,
     subtitle: (i) => (i.keywords as string[]).join(", "),
@@ -107,7 +108,7 @@ export const SECTION_FIELDS: Record<SectionKey, SectionConfig> = {
     defaults: () => ({ organization: "", location: "", period: "", dates: emptyDates(), website: emptyWebsite(), description: "" }),
   },
   profiles: {
-    fields: [text("network", "Netzwerk"), text("username", "Benutzername"), website],
+    fields: [icon, text("network", "Netzwerk"), text("username", "Benutzername"), website],
     required: "network",
     title: (i) => i.network,
     subtitle: (i) => i.username,

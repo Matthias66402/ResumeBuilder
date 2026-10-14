@@ -1,5 +1,7 @@
 import type { ItemWebsite, ResumeDates } from "../../types/resume";
+import { hexToRgba, rgbaToHex } from "../../lib/color";
 import DatesField from "../fields/DatesField";
+import IconPicker from "../fields/IconPicker";
 import KeywordsField from "../fields/KeywordsField";
 import LevelField from "../fields/LevelField";
 import RichTextField from "../fields/RichTextField";
@@ -56,6 +58,31 @@ export default function ItemFields({ fields, item, onChange }: Props) {
               </div>
             );
           }
+          case "icon":
+            return (
+              <div key={field.key} className="col-span-2 flex items-end gap-3">
+                <div>
+                  <span className="mb-1 block text-xs font-medium text-slate-600">{field.label}</span>
+                  <IconPicker value={item.icon ?? ""} onChange={(v) => onChange("icon", v)} />
+                </div>
+                <label className="flex items-center gap-2 pb-1 text-xs text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={!!item.iconColor}
+                    onChange={(e) => onChange("iconColor", e.target.checked ? "rgba(0, 0, 0, 1)" : "")}
+                  />
+                  eigene Farbe
+                </label>
+                {!!item.iconColor && (
+                  <input
+                    type="color"
+                    value={rgbaToHex(item.iconColor)}
+                    onChange={(e) => onChange("iconColor", hexToRgba(e.target.value))}
+                    className="mb-0.5 h-7 w-12 cursor-pointer rounded border border-slate-300"
+                  />
+                )}
+              </div>
+            );
           case "roles":
             return (
               <div key={field.key} className={span}>

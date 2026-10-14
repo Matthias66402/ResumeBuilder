@@ -1,5 +1,6 @@
 import { defaultTitle, SECTION_KEYS } from "../../templates/shared/labels";
 import type { ResumeData } from "../../types/resume";
+import SectionIconField from "../fields/SectionIconField";
 import RichTextField from "../fields/RichTextField";
 import { useBuilder } from "../store";
 import { IconButton, Icons, PanelSection, TextInput, inputClass } from "../ui";
@@ -49,10 +50,13 @@ function SummaryForm({ summary, locale }: { summary: ResumeData["summary"]; loca
         </IconButton>
       </div>
       <div className="space-y-3">
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-600">Überschrift</span>
-          <input value={summary.title} placeholder={defaultTitle("summary", locale)} onChange={(e) => update((d) => void (d.summary.title = e.target.value), "summary:title")} className={inputClass} />
-        </label>
+        <div className="flex items-start gap-2">
+          <SectionIconField value={summary.icon} setIcon={(d, icon) => void (d.summary.icon = icon)} />
+          <label className="block flex-1">
+            <span className="mb-1 block text-xs font-medium text-slate-600">Überschrift</span>
+            <input value={summary.title} placeholder={defaultTitle("summary", locale)} onChange={(e) => update((d) => void (d.summary.title = e.target.value), "summary:title")} className={inputClass} />
+          </label>
+        </div>
         <RichTextField label="Text" value={summary.content} onChange={(v) => update((d) => void (d.summary.content = v), "summary:content")} />
       </div>
     </section>

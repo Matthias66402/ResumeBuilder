@@ -74,7 +74,15 @@
 .rb-sidebar-picture { display: flex; justify-content: center; }
 
 .rb-contact { display: flex; flex-wrap: wrap; column-gap: 0.5em; row-gap: 0.15em; font-size: 0.95em; }
-.rb-contact-inline .rb-contact-item + .rb-contact-item::before { content: "·"; margin-right: 0.5em; opacity: 0.5; }
+/* Dots separate contact items only when they have no icons (:where keeps template overrides winning). */
+.rb-contact-inline:where(:not(.rb-contact-icons)) .rb-contact-item + .rb-contact-item::before { content: "·"; margin-right: 0.5em; opacity: 0.5; }
+.rb-contact-icons { column-gap: 0.9em; }
+.rb-contact-item { display: inline-flex; align-items: baseline; gap: 0.3em; }
+
+/* Phosphor icons: contact and item icons in the accent color, section icons follow the heading. */
+.rb-icon { flex-shrink: 0; font-size: 1.05em; line-height: 1; position: relative; top: 0.1em; color: var(--rb-icon-color, var(--rb-accent)); }
+.rb-entry-name { display: inline-flex; align-items: baseline; gap: 0.35em; }
+.rb-section-icon { color: inherit; margin-right: 0.35em; }
 .rb-contact-list { flex-direction: column; }
 .rb-contact-grid { display: grid; grid-template-columns: 1fr 1fr; }
 
@@ -161,7 +169,7 @@
 
 /* --- Rhyhorn: contact separated by accent bars ----------------------------------------------------- */
 .rb-template-rhyhorn .rb-header { gap: var(--rb-gap-x); }
-.rb-template-rhyhorn .rb-contact-item + .rb-contact-item::before { content: "|"; color: var(--rb-primary); opacity: 1; }
+.rb-template-rhyhorn .rb-contact-item + .rb-contact-item::before { content: "|"; color: var(--rb-primary); opacity: 1; margin-right: 0.5em; }
 
 /* --- Scizor: accent bar on top, light dividers between sections -------------------------------- */
 .rb-template-scizor::before { content: ""; position: absolute; inset: 0 0 auto 0; height: calc(var(--rb-gap-y) * 0.45); background: var(--rb-primary); }
@@ -262,6 +270,9 @@
   border-radius: var(--rb-card-radius);
   padding: var(--rb-margin-y) var(--rb-margin-x);
 }
+.rb-template-pikachu .rb-header,
+.rb-template-gengar .rb-sidebar .rb-header,
+.rb-template-ditgar .rb-sidebar .rb-header { --rb-icon-color: currentColor; }
 .rb-template-pikachu .rb-identity { border-bottom: 1px solid var(--rb-bg); padding-bottom: calc(var(--rb-gap-y) * 0.5); }
 .rb-template-pikachu .rb-header .rb-contact { column-gap: 0.75em; }
 .rb-template-pikachu .rb-contact-item + .rb-contact-item::before { content: none; }
