@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: resumebuilder
+      POSTGRES_PASSWORD: ${RB_DB_PASSWORD:-resumebuilder}
+      POSTGRES_DB: resumebuilder
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Host port 5434: 5432/5433 are already used by other local Postgres containers.
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resumebuilder -d resumebuilder"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://resumebuilder:${RB_DB_PASSWORD:-resumebuilder}@db:5432/resumebuilder
+      GROQ_API_KEY: ${GROQ_API_KEY:?GROQ_API_KEY must be set in .env}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
