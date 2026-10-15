@@ -36,13 +36,21 @@ def _complete(client: Groq, text: str, response_format: dict) -> str:
     if response_format["type"] == "json_object":
         # JSON mode has no schema parameter, so the schema goes into the prompt instead.
         messages[0]["content"] += "\n\n## JSON Schema\n\n" + json.dumps(ExtractedResume.model_json_schema())
+    settings = get_settings()
+    extra = {"reasoning_effort": settings.groq_reasoning_effort} if settings.groq_reasoning_effort else {}
     completion = client.chat.completions.create(
-        model=get_settings().groq_model,
+        model=settings.groq_model,
         messages=messages,
         response_format=response_format,
         temperature=0,
+        max_completion_tokens=settings.groq_max_completion_tokens,
+        **extra,
     )
-    return completion.choices[0].message.content or ""
+    choice = completion.choices[0]
+    if choice.finish_reason == "length":
+        # A cut-off answer can still be valid JSON with the later sections missing, so it must not be saved.
+        raise ParseError("Die Antwort des LLM wurde abgeschnitten (GROQ_MAX_COMPLETION_TOKENS erhöhen).")
+    return choice.message.content or ""
 
 
 def extract(text: str, client: Groq | None = None) -> ExtractedResume:
@@ -53,11 +61,15 @@ def extract(text: str, client: Groq | None = None) -> ExtractedResume:
     }
     try:
         content = _complete(client, text, strict)
+    except ParseError:
+        raise
     except BadRequestError as exc:
         # Models without strict structured-output support reject the schema; fall back to JSON mode.
         log.warning("Structured output rejected (%s), retrying with JSON mode", exc)
         try:
             content = _complete(client, text, {"type": "json_object"})
+        except ParseError:
+            raise
         except Exception as inner:
             raise ParseError(f"LLM-Aufruf fehlgeschlagen: {inner}") from inner
     except Exception as exc:

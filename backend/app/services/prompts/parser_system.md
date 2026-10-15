@@ -20,7 +20,9 @@ You are a strict resume extraction engine. Convert the plain text extracted from
 ## Extraction Rules
 
 - Dates: put the text exactly as written into `dates.text`. Additionally fill `dates.start` / `dates.end` as "YYYY" or "YYYY-MM" only when the year (and month) are explicitly stated; otherwise use null. Set `dates.present` to true only for explicit wording such as "present", "heute", "bis dato", "now". Single-date entries (awards, certifications, publications) use `dates.start` only.
-- URLs: include only URLs or domains that appear in the text. Do not invent profile URLs from usernames.
+- URLs: include only URLs or domains that appear in the text or in the trailing "Links" list. Do not invent profile URLs from usernames.
+- Links list: the input may end with "Links (hyperlinks in the PDF, link text → URL)". Each entry maps a visible text to the URL it links to. Use it to fill the `url` of the item whose text matches (profile, project, experience, …); it is not a resume section of its own.
+- Profiles: every social or developer network listed in the resume is a profile (e.g. under a "Profile" / "Profiles" / "Social" heading, or lines like "LinkedIn", "GitHub", "Xing"). The line after the network name is the `username`. Include the profile even when no URL is available; then leave `url` empty. A personal website without a network name goes to `basics.website` instead.
 - Contact data: copy as-is; do not reformat.
 - Skills: include only explicit skill mentions. Group skills under their heading as `name` with the individual skills as `keywords` when the resume groups them; otherwise one item per skill.
 - Descriptions and summary: output HTML using `<p>`, `<ul>`, `<li>` while preserving meaning. Bullet points become `<ul><li>…</li></ul>`.

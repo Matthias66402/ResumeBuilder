@@ -219,6 +219,15 @@ function PagePanel() {
         <input type="checkbox" checked={!page.hideSectionIcons} onChange={(e) => set((m) => void (m.page.hideSectionIcons = !e.target.checked))} />
         Icons bei Abschnittsüberschriften
       </label>
+      <label className="flex items-center gap-2 text-sm">
+        {/* Reactive Resume hides levels with the level type "hidden"; circles are the only style drawn here. */}
+        <input
+          type="checkbox"
+          checked={metadata.design.level.type !== "hidden"}
+          onChange={(e) => set((m) => void (m.design.level.type = e.target.checked ? "circle" : "hidden"))}
+        />
+        Stufen bei Kenntnissen und Sprachen
+      </label>
     </PanelSection>
   );
 }

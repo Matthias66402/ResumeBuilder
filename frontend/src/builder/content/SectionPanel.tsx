@@ -8,12 +8,13 @@ import type { SectionKey } from "../../types/resume";
 import SectionIconField from "../fields/SectionIconField";
 import { SECTION_FIELDS, type AnyItem } from "../sectionFields";
 import { useBuilder } from "../store";
-import { IconButton, Icons, inputClass } from "../ui";
+import { IconButton, Icons, inputClass, Label } from "../ui";
 import EntryCard from "./EntryCard";
 
 export default function SectionPanel({ sectionKey }: { sectionKey: SectionKey }) {
   const section = useBuilder((s) => s.data!.sections[sectionKey]);
   const locale = useBuilder((s) => s.data!.metadata.page.locale);
+  const skillsKeywordLayout = useBuilder((s) => s.data!.sections.skills.keywordLayout);
   const update = useBuilder((s) => s.update);
   const config = SECTION_FIELDS[sectionKey];
   const [expanded, setExpanded] = useState(false);
@@ -82,6 +83,18 @@ export default function SectionPanel({ sectionKey }: { sectionKey: SectionKey })
               />
             </label>
           </div>
+          {sectionKey === "skills" && (
+            <Label label="Schlagwörter anzeigen">
+              <select
+                value={skillsKeywordLayout}
+                onChange={(e) => update((d) => void (d.sections.skills.keywordLayout = e.target.value as "inline" | "list"))}
+                className={inputClass}
+              >
+                <option value="inline">In einer Zeile, mit Kommas</option>
+                <option value="list">Jedes in einer eigenen Zeile</option>
+              </select>
+            </Label>
+          )}
           <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={onDragEnd}>
             <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
               {items.map((item) => (

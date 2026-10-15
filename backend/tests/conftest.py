@@ -68,7 +68,7 @@ class FakeGroq:
     def _create(self, **kwargs):
         self.calls.append(kwargs)
         message = SimpleNamespace(content=json.dumps(self.payload))
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+        return SimpleNamespace(choices=[SimpleNamespace(message=message, finish_reason="stop")])
 
 
 @pytest.fixture

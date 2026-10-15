@@ -17,6 +17,8 @@ interface Entry {
   meta?: string;
   location?: string;
   website?: ItemWebsite;
+  /** Makes the title (with its icon) a link, as for profiles. */
+  titleLink?: string;
   description?: string;
   keywords?: string[];
   level?: number;
@@ -49,7 +51,15 @@ const ENTRY: Record<SectionKey, (i: any) => Omit<Entry, "id">> = {
   certifications: (i) => ({ title: i.title, subtitle: i.issuer, meta: i.date, website: i.website, description: i.description }),
   publications: (i) => ({ title: i.title, subtitle: i.publisher, meta: i.date, website: i.website, description: i.description }),
   volunteer: (i) => ({ title: i.organization, meta: i.period, location: i.location, website: i.website, description: i.description }),
-  profiles: (i) => ({ title: i.network, subtitle: i.username, website: i.website, icon: i.icon, iconColor: i.iconColor }),
+  // The network heading carries the link; the link line below only shows when it has its own text.
+  profiles: (i) => ({
+    title: i.network,
+    subtitle: i.username,
+    titleLink: i.website.url,
+    website: i.website.label.trim() ? i.website : undefined,
+    icon: i.icon,
+    iconColor: i.iconColor,
+  }),
   references: (i) => ({ title: i.name, subtitle: join(i.position, i.phone), website: i.website, description: i.description }),
 };
 
@@ -86,20 +96,54 @@ function Level({ value }: { value: number }) {
 function Website({ website }: { website?: ItemWebsite }) {
   if (!website?.url) return null;
   return (
-    <a className="rb-link" href={website.url} target="_blank" rel="noreferrer">
+    <a className="rb-link" href={absoluteLink(website.url)} target="_blank" rel="noreferrer">
       {website.label || website.url.replace(/^https?:\/\/(www\.)?/, "")}
     </a>
   );
 }
 
-function EntryView({ entry, compact, icons }: { entry: Entry; compact: boolean; icons: boolean }) {
+/** Keywords as one comma-separated line, or (skills with keywordLayout "list") one per line. */
+function Keywords({ keywords, list }: { keywords?: string[]; list: boolean }) {
+  if (!keywords?.length) return null;
+  if (!list) return <p className="rb-keywords">{keywords.join(", ")}</p>;
+  return (
+    <ul className="rb-keywords rb-keywords-list">
+      {keywords.map((keyword, index) => (
+        <li key={index}>{keyword}</li>
+      ))}
+    </ul>
+  );
+}
+
+function EntryView({
+  entry,
+  compact,
+  icons,
+  levels = true,
+  keywordList = false,
+}: {
+  entry: Entry;
+  compact: boolean;
+  icons: boolean;
+  levels?: boolean;
+  keywordList?: boolean;
+}) {
   return (
     <div className="rb-entry">
       <div className="rb-entry-head">
         <div className="rb-entry-title">
           <strong className="rb-entry-name">
-            {icons && entry.icon && <Icon name={entry.icon} color={entry.iconColor || undefined} />}
-            {entry.title}
+            {entry.titleLink ? (
+              <a className="rb-link" href={absoluteLink(entry.titleLink)} target="_blank" rel="noreferrer">
+                {icons && entry.icon && <Icon name={entry.icon} color={entry.iconColor || undefined} />}
+                {entry.title}
+              </a>
+            ) : (
+              <>
+                {icons && entry.icon && <Icon name={entry.icon} color={entry.iconColor || undefined} />}
+                {entry.title}
+              </>
+            )}
           </strong>
           {entry.subtitle && <span className="rb-entry-subtitle">{entry.subtitle}</span>}
         </div>
@@ -111,8 +155,8 @@ function EntryView({ entry, compact, icons }: { entry: Entry; compact: boolean; 
         )}
       </div>
       {compact && (entry.meta || entry.location) && <div className="rb-entry-meta-inline">{join(entry.meta, entry.location)}</div>}
-      {entry.level !== undefined && <Level value={entry.level} />}
-      {!!entry.keywords?.length && <p className="rb-keywords">{entry.keywords.join(", ")}</p>}
+      {levels && entry.level !== undefined && <Level value={entry.level} />}
+      <Keywords keywords={entry.keywords} list={keywordList} />
       <Website website={entry.website} />
       {entry.description && <Html html={entry.description} />}
       {!!entry.children?.length && (
@@ -139,6 +183,8 @@ export function Section({ data, id, compact = false, render }: SectionProps) {
   const sheet = useSheet();
   if (!isSectionVisible(data, id)) return null;
   const { hideIcons, hideSectionIcons } = data.metadata.page;
+  const keywordList = id === "skills" && data.sections.skills.keywordLayout === "list";
+  const levels = data.metadata.design.level.type !== "hidden";
 
   // Each entry (or the whole summary) is one unit the paginator may move to the next sheet; `data-entry` marks it for measuring.
   const units =
@@ -146,7 +192,7 @@ export function Section({ data, id, compact = false, render }: SectionProps) {
       ? [{ key: entryKey("summary", "summary"), node: <Html html={data.summary.content} /> }]
       : visibleEntries(data, id as SectionKey).map((entry) => ({
           key: entryKey(id, entry.id),
-          node: <EntryView entry={entry} compact={compact} icons={!hideIcons} />,
+          node: <EntryView entry={entry} compact={compact} icons={!hideIcons} levels={levels} keywordList={keywordList} />,
         }));
   const onSheet = units.filter((u) => isOnSheet(sheet, u.key));
   if (!onSheet.length) return null;
@@ -209,7 +255,7 @@ export function Contact({ data, variant = "inline", emailIcon = "envelope" }: { 
       key: "website",
       icon: "globe",
       content: (
-        <a className="rb-link" href={website.url} target="_blank" rel="noreferrer">
+        <a className="rb-link" href={absoluteLink(website.url)} target="_blank" rel="noreferrer">
           {website.label || website.url.replace(/^https?:\/\/(www\.)?/, "")}
         </a>
       ),

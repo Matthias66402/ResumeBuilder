@@ -25,6 +25,8 @@ services:
       DATABASE_URL: postgresql+psycopg://resumebuilder:${RB_DB_PASSWORD:-resumebuilder}@db:5432/resumebuilder
       GROQ_API_KEY: ${GROQ_API_KEY:?GROQ_API_KEY must be set in .env}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      GROQ_MAX_COMPLETION_TOKENS: ${GROQ_MAX_COMPLETION_TOKENS:-3600}
+      GROQ_REASONING_EFFORT: ${GROQ_REASONING_EFFORT-low}
       # true when served over HTTPS, so the sign-in cookie is never sent unencrypted
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:

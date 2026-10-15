@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://resumebuilder:resumebuilder@localhost:5434/resumebuilder"
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
+    # Reasoning models spend part of this on thinking, so it must leave room for the whole resume JSON. Groq counts it
+    # against the tokens-per-minute limit before answering: prompt (~4,300) + this must stay under 8,000 on the free tier.
+    groq_max_completion_tokens: int = 3600
+    # "low" keeps gpt-oss's thinking at a few hundred tokens instead of several thousand; empty for non-reasoning models.
+    groq_reasoning_effort: str = "low"
     max_upload_mb: int = 10
     # Sign-in sessions last this long; set COOKIE_SECURE=true when the app is served over HTTPS.
     session_days: int = 30
