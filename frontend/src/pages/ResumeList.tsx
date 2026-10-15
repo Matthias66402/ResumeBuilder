@@ -52,6 +52,7 @@ interface CardProps {
   resume: ResumeSummary;
   data?: ResumeData;
   onRename: (name: string) => void;
+  onToggleLock: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
 }
@@ -83,8 +84,9 @@ function NameEditor({ name, onDone }: { name: string; onDone: (name: string | nu
   );
 }
 
-function ResumeCard({ resume, data, onRename, onDuplicate, onDelete }: CardProps) {
+function ResumeCard({ resume, data, onRename, onToggleLock, onDuplicate, onDelete }: CardProps) {
   const [editing, setEditing] = useState(false);
+  const { locked } = resume;
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md">
       <Link to={`/resumes/${resume.id}`} className="relative block aspect-[210/297] overflow-hidden bg-slate-100" aria-label={`${resume.name} bearbeiten`}>
@@ -101,8 +103,8 @@ function ResumeCard({ resume, data, onRename, onDuplicate, onDelete }: CardProps
           </span>
         </span>
       </Link>
-      <div className="flex items-start gap-2 border-t border-slate-100 p-3">
-        <div className="min-w-0 flex-1">
+      <div className="border-t border-slate-100 px-3 pt-3 pb-2">
+        <div className="min-w-0">
           {editing ? (
             <NameEditor
               name={resume.name}
@@ -116,12 +118,13 @@ function ResumeCard({ resume, data, onRename, onDuplicate, onDelete }: CardProps
               to={`/resumes/${resume.id}`}
               onDoubleClick={(e) => {
                 e.preventDefault();
-                setEditing(true);
+                if (!locked) setEditing(true);
               }}
-              title="Doppelklick zum Umbenennen"
-              className="block truncate font-medium text-slate-900 hover:text-blue-700"
+              title={locked ? "Gesperrt" : "Doppelklick zum Umbenennen"}
+              className="flex items-center gap-1 font-medium text-slate-900 hover:text-blue-700"
             >
-              {resume.name}
+              {locked && <i className="ph ph-lock-simple shrink-0 text-amber-600" aria-label="gesperrt" />}
+              <span className="truncate">{resume.name}</span>
             </Link>
           )}
           <p className="truncate text-xs text-slate-500" title={new Date(resume.updated_at).toLocaleString("de-DE")}>
@@ -130,12 +133,26 @@ function ResumeCard({ resume, data, onRename, onDuplicate, onDelete }: CardProps
             bearbeitet {relativeTime(resume.updated_at)}
           </p>
         </div>
+      </div>
+      {/* Own row, so the name keeps the card's full width. */}
+      <div className="flex items-center justify-end gap-0.5 border-t border-slate-100 px-2 py-1">
+        <button
+          type="button"
+          onClick={onToggleLock}
+          title={locked ? "Entsperren" : "Sperren (vor versehentlichem Bearbeiten schützen)"}
+          aria-label={`${resume.name} ${locked ? "entsperren" : "sperren"}`}
+          aria-pressed={locked}
+          className={`rounded-md p-1.5 hover:bg-amber-50 hover:text-amber-700 ${locked ? "text-amber-600" : "text-slate-400"}`}
+        >
+          <i className={`ph ${locked ? "ph-lock-simple" : "ph-lock-simple-open"} text-lg`} aria-hidden />
+        </button>
         <button
           type="button"
           onClick={() => setEditing(true)}
-          title="Umbenennen (auch Dateiname des PDFs)"
+          disabled={locked}
+          title={locked ? "Gesperrt – zum Umbenennen erst entsperren" : "Umbenennen (auch Dateiname des PDFs)"}
           aria-label={`${resume.name} umbenennen`}
-          className="rounded-md p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+          className="rounded-md p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 disabled:pointer-events-none disabled:opacity-30"
         >
           <i className="ph ph-pencil-simple text-lg" aria-hidden />
         </button>
@@ -151,9 +168,10 @@ function ResumeCard({ resume, data, onRename, onDuplicate, onDelete }: CardProps
         <button
           type="button"
           onClick={onDelete}
-          title="Löschen"
+          disabled={locked}
+          title={locked ? "Gesperrt – zum Löschen erst entsperren" : "Löschen"}
           aria-label={`${resume.name} löschen`}
-          className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+          className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:pointer-events-none disabled:opacity-30"
         >
           <i className="ph ph-trash text-lg" aria-hidden />
         </button>
@@ -265,6 +283,16 @@ export default function ResumeList() {
     }
   };
 
+  const toggleLock = async (resume: ResumeSummary) => {
+    setError(null);
+    try {
+      const { data: _data, ...updated } = await api.updateResume(resume.id, { locked: !resume.locked });
+      setResumes((list) => list?.map((r) => (r.id === resume.id ? updated : r)) ?? null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   const duplicate = async (resume: ResumeSummary) => {
     setError(null);
     try {
@@ -332,6 +360,7 @@ export default function ResumeList() {
               resume={r}
               data={details[r.id]}
               onRename={(name) => rename(r, name)}
+              onToggleLock={() => toggleLock(r)}
               onDuplicate={() => duplicate(r)}
               onDelete={() => remove(r)}
             />

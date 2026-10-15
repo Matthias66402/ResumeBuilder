@@ -235,6 +235,8 @@ export interface ResumeSummary {
   id: string;
   name: string;
   source_filename: string | null;
+  /** Locked resumes can't be edited, re-pictured or deleted until unlocked (server-enforced). */
+  locked: boolean;
   created_at: string;
   updated_at: string;
 }

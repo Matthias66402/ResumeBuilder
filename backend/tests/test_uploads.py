@@ -1,3 +1,5 @@
+import time
+
 import pymupdf
 import pytest
 
@@ -92,3 +94,33 @@ def test_pdf_render_failure_is_502(client, resume_id, monkeypatch):
 
     monkeypatch.setattr(resumes_router, "render_resume_pdf", fail)
     assert client.get(f"/api/resumes/{resume_id}/pdf").status_code == 502
+
+
+def test_locked_resume_refuses_edits_picture_and_delete_until_unlocked(client, resume_id):
+    assert client.get(f"/api/resumes/{resume_id}").json()["locked"] is False
+    res = client.put(f"/api/resumes/{resume_id}", json={"locked": True})
+    assert res.status_code == 200 and res.json()["locked"] is True
+    assert client.get("/api/resumes").json()[0]["locked"] is True
+
+    data = client.get(f"/api/resumes/{resume_id}").json()["data"]
+    assert client.put(f"/api/resumes/{resume_id}", json={"name": "Neu"}).status_code == 423
+    assert client.put(f"/api/resumes/{resume_id}", json={"data": data}).status_code == 423
+    picture = client.post(f"/api/resumes/{resume_id}/picture", files={"file": ("me.png", png_bytes(), "image/png")})
+    assert picture.status_code == 423
+    assert client.delete(f"/api/resumes/{resume_id}").status_code == 423
+    assert client.get(f"/api/resumes/{resume_id}").json()["name"] == "Max Mustermann"
+
+    # Duplicating still works and gives an unlocked copy.
+    assert client.post(f"/api/resumes/{resume_id}/duplicate").json()["locked"] is False
+
+    # Locking and unlocking alone don't count as an edit; an edit does.
+    edited_at = client.get(f"/api/resumes/{resume_id}").json()["updated_at"]
+    time.sleep(1.1)  # SQLite's CURRENT_TIMESTAMP has whole seconds
+    assert client.put(f"/api/resumes/{resume_id}", json={"locked": False}).json()["updated_at"] == edited_at
+    assert client.put(f"/api/resumes/{resume_id}", json={"locked": True}).json()["updated_at"] == edited_at
+
+    # Unlocking together with an edit applies the edit.
+    res = client.put(f"/api/resumes/{resume_id}", json={"locked": False, "name": "Neu"})
+    assert res.status_code == 200 and res.json()["name"] == "Neu" and res.json()["locked"] is False
+    assert res.json()["updated_at"] != edited_at
+    assert client.delete(f"/api/resumes/{resume_id}").status_code == 204

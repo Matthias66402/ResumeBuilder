@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, LargeBinary, String, Text, Uuid, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, LargeBinary, String, Text, Uuid, false, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -42,6 +42,8 @@ class Resume(Base):
     raw_text: Mapped[str | None] = mapped_column(Text)
     # Reactive Resume compatible ResumeData (see app/schemas/resume.py).
     data: Mapped[dict[str, Any]] = mapped_column(JSONB().with_variant(JSON(), "sqlite"))
+    # Locked resumes refuse edits, picture uploads and deletion until unlocked (kept outside `data` for RR compatibility).
+    locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

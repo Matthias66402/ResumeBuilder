@@ -77,9 +77,44 @@ function useDownloadPdf() {
   return { busy, error, download, dismiss: () => setError(null) };
 }
 
+/** Locks or unlocks the open resume; pending edits are saved first. */
+function useToggleLock() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const toggle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await useBuilder.getState().setLocked(!useBuilder.getState().locked);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, error, toggle, dismiss: () => setError(null) };
+}
+
+function LockedBanner() {
+  const lock = useToggleLock();
+  return (
+    <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 print:hidden">
+      <i className="ph ph-lock-simple text-base" aria-hidden />
+      <span className="flex-1">
+        Dieser Lebenslauf ist gesperrt und kann nicht bearbeitet werden. Vorschau und PDF-Download funktionieren weiter.
+        {lock.error && <span className="ml-2 text-red-700">{lock.error}</span>}
+      </span>
+      <button type="button" onClick={lock.toggle} disabled={lock.busy} className="rounded-md border border-amber-300 bg-white px-3 py-1 font-medium hover:bg-amber-100 disabled:opacity-60">
+        Entsperren
+      </button>
+    </div>
+  );
+}
+
 function TopBar({ zoom, setZoom, onJson }: { zoom: number | "fit"; setZoom: (z: number | "fit") => void; onJson: () => void }) {
-  const { name, status, past, future, rename, undo, redo } = useBuilder();
+  const { name, status, past, future, locked, rename, undo, redo } = useBuilder();
   const pdf = useDownloadPdf();
+  const lock = useToggleLock();
   const { text, className } = STATUS[status];
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 print:hidden">
@@ -90,10 +125,11 @@ function TopBar({ zoom, setZoom, onJson }: { zoom: number | "fit"; setZoom: (z: 
         <input
           value={name}
           onChange={(e) => rename(e.target.value)}
+          readOnly={locked}
           aria-label="Name des Lebenslaufs"
           className="w-full min-w-0 rounded-md py-1 pl-2 pr-7 font-semibold outline-none hover:bg-slate-50 focus:bg-slate-50 focus:ring-2 focus:ring-blue-100"
         />
-        <i className="ph ph-pencil-simple pointer-events-none absolute right-2 text-slate-400 group-hover:text-slate-600" aria-hidden />
+        {!locked && <i className="ph ph-pencil-simple pointer-events-none absolute right-2 text-slate-400 group-hover:text-slate-600" aria-hidden />}
       </label>
       <span className={`hidden text-xs md:inline ${className}`}>
         {text}
@@ -104,10 +140,13 @@ function TopBar({ zoom, setZoom, onJson }: { zoom: number | "fit"; setZoom: (z: 
         )}
       </span>
       <div className="ml-auto flex items-center gap-1">
-        <IconButton title="Rückgängig (Strg+Z)" disabled={!past.length} onClick={undo}>
+        <IconButton title={locked ? "Entsperren" : "Sperren (vor versehentlichem Bearbeiten schützen)"} active={locked} disabled={lock.busy} onClick={lock.toggle}>
+          <i className={`ph ${locked ? "ph-lock-simple" : "ph-lock-simple-open"} text-base`} aria-hidden />
+        </IconButton>
+        <IconButton title="Rückgängig (Strg+Z)" disabled={!past.length || locked} onClick={undo}>
           <Icons.Undo />
         </IconButton>
-        <IconButton title="Wiederholen (Strg+Y)" disabled={!future.length} onClick={redo}>
+        <IconButton title="Wiederholen (Strg+Y)" disabled={!future.length || locked} onClick={redo}>
           <Icons.Redo />
         </IconButton>
         <select
@@ -138,10 +177,16 @@ function TopBar({ zoom, setZoom, onJson }: { zoom: number | "fit"; setZoom: (z: 
           {pdf.busy ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Icons.Download />}
           <span className="hidden sm:inline">{pdf.busy ? "Erstelle PDF …" : "PDF herunterladen"}</span>
         </button>
-        {pdf.error && (
+        {(pdf.error || lock.error) && (
           <div role="alert" className="fixed top-16 right-4 z-50 flex max-w-sm items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 shadow-lg">
-            <span className="flex-1">{pdf.error}</span>
-            <IconButton title="Schließen" onClick={pdf.dismiss}>
+            <span className="flex-1">{pdf.error || lock.error}</span>
+            <IconButton
+              title="Schließen"
+              onClick={() => {
+                pdf.dismiss();
+                lock.dismiss();
+              }}
+            >
               <Icons.X />
             </IconButton>
           </div>
@@ -155,6 +200,7 @@ export default function Builder() {
   const { id } = useParams<{ id: string }>();
   const data = useBuilder((s) => s.data);
   const loadedId = useBuilder((s) => s.id);
+  const locked = useBuilder((s) => s.locked);
   const load = useBuilder((s) => s.load);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("preview");
@@ -214,6 +260,7 @@ export default function Builder() {
   return (
     <div className="flex h-screen flex-col bg-slate-100 print:block print:h-auto print:bg-white">
       <TopBar zoom={zoom} setZoom={setZoom} onJson={() => setShowJson(true)} />
+      {locked && <LockedBanner />}
 
       <nav className="flex border-b border-slate-200 bg-white xl:hidden print:hidden">
         {(
@@ -231,7 +278,10 @@ export default function Builder() {
 
       <div className="flex min-h-0 flex-1 print:block">
         <aside className={`${panel("content")} w-full shrink-0 flex-col overflow-y-auto border-r border-slate-200 bg-white xl:w-[380px] print:hidden`}>
-          <ContentPanel />
+          {/* A disabled fieldset turns every input, select and button inside read-only while locked. */}
+          <fieldset disabled={locked} className={`min-w-0 ${locked ? "opacity-60" : ""}`}>
+            <ContentPanel />
+          </fieldset>
         </aside>
         <main ref={canvas} className={`${panel("preview")} min-w-0 flex-1 justify-center overflow-auto p-6 print:block print:overflow-visible print:p-0`}>
           <div className="h-fit">
@@ -239,7 +289,9 @@ export default function Builder() {
           </div>
         </main>
         <aside className={`${panel("design")} w-full shrink-0 flex-col overflow-y-auto border-l border-slate-200 bg-white xl:w-[320px] print:hidden`}>
-          <DesignPanel />
+          <fieldset disabled={locked} className={`min-w-0 ${locked ? "opacity-60" : ""}`}>
+            <DesignPanel />
+          </fieldset>
         </aside>
       </div>
 

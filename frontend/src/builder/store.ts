@@ -18,6 +18,8 @@ interface BuilderState {
   id: string | null;
   name: string;
   data: ResumeData | null;
+  /** While locked, every edit action is ignored; the panels are also disabled. */
+  locked: boolean;
   status: SaveStatus;
   past: ResumeData[];
   future: ResumeData[];
@@ -27,6 +29,8 @@ interface BuilderState {
   /** Mutates the resume through immer. Edits with the same `key` within a second form one undo step. */
   update: (fn: (draft: Draft<ResumeData>) => void, key?: string) => void;
   rename: (name: string) => void;
+  /** Saves pending edits first, then locks or unlocks on the server. */
+  setLocked: (locked: boolean) => Promise<void>;
   undo: () => void;
   redo: () => void;
 }
@@ -49,6 +53,7 @@ export const useBuilder = create<BuilderState>()((set, get) => ({
   id: null,
   name: "",
   data: null,
+  locked: false,
   status: "saved",
   past: [],
   future: [],
@@ -57,12 +62,12 @@ export const useBuilder = create<BuilderState>()((set, get) => ({
 
   load: (resume) => {
     saver.reset(resume.name, resume.data);
-    set({ id: resume.id, name: resume.name, data: resume.data, status: "saved", past: [], future: [], lastKey: null });
+    set({ id: resume.id, name: resume.name, data: resume.data, locked: resume.locked, status: "saved", past: [], future: [], lastKey: null });
   },
 
   update: (fn, key) => {
-    const { data, past, lastKey, lastAt } = get();
-    if (!data) return;
+    const { data, locked, past, lastKey, lastAt } = get();
+    if (!data || locked) return;
     const next = produce(data, (draft) => {
       fn(draft);
       syncDates(draft);
@@ -81,22 +86,31 @@ export const useBuilder = create<BuilderState>()((set, get) => ({
   },
 
   rename: (name) => {
+    if (get().locked) return;
     set({ name });
     saver.schedule();
   },
 
   undo: () => {
-    const { data, past, future } = get();
+    const { data, locked, past, future } = get();
     const prev = past.at(-1);
-    if (!data || !prev) return;
+    if (!data || !prev || locked) return;
     set({ data: prev, past: past.slice(0, -1), future: [data, ...future], lastKey: null });
     saver.schedule();
   },
 
+  setLocked: async (locked) => {
+    const { id } = get();
+    if (!id) return;
+    await saver.saveNow();
+    const resume = await api.updateResume(id, { locked });
+    set({ locked: resume.locked });
+  },
+
   redo: () => {
-    const { data, past, future } = get();
+    const { data, locked, past, future } = get();
     const [next, ...rest] = future;
-    if (!data || !next) return;
+    if (!data || !next || locked) return;
     set({ data: next, past: [...past, data], future: rest, lastKey: null });
     saver.schedule();
   },

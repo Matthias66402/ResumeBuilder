@@ -13,6 +13,7 @@ class ResumeSummary(BaseModel):
     id: uuid.UUID
     name: str
     source_filename: str | None
+    locked: bool
     created_at: datetime
     updated_at: datetime
 
@@ -26,3 +27,5 @@ class ResumeUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     # Replaces the whole document, as Reactive Resume's builder does on save.
     data: ResumeData | None = None
+    # Locking and unlocking; edits sent together with locked=false are applied after unlocking.
+    locked: bool | None = None

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.auth import current_user
 from app.db import get_session
 from app.models import Resume, Upload, User
-from app.routers.resumes import get_own_resume
+from app.routers.resumes import ensure_unlocked, get_own_resume
 
 router = APIRouter(tags=["uploads"])
 
@@ -34,7 +34,7 @@ class UploadOut(BaseModel):
 def upload_picture(
     resume_id: uuid.UUID, file: UploadFile, user: User = Depends(current_user), session: Session = Depends(get_session)
 ) -> UploadOut:
-    get_own_resume(session, resume_id, user)
+    ensure_unlocked(get_own_resume(session, resume_id, user))
     content = file.file.read(MAX_PICTURE_BYTES + 1)
     if len(content) > MAX_PICTURE_BYTES:
         raise HTTPException(413, "Das Bild ist größer als 5 MB.")

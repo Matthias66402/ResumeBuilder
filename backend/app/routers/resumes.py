@@ -7,6 +7,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.auth import COOKIE_NAME, current_user
 from app.config import get_settings
@@ -70,6 +71,11 @@ def get_own_resume(session: Session, resume_id: uuid.UUID, user: User) -> Resume
     return resume
 
 
+def ensure_unlocked(resume: Resume) -> None:
+    if resume.locked:
+        raise HTTPException(423, "Der Lebenslauf ist gesperrt. Zum Bearbeiten erst entsperren.")
+
+
 @router.get("/{resume_id}", response_model=ResumeOut)
 def get_resume(resume_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session)) -> Resume:
     return get_own_resume(session, resume_id, user)
@@ -80,10 +86,19 @@ def update_resume(
     resume_id: uuid.UUID, update: ResumeUpdate, user: User = Depends(current_user), session: Session = Depends(get_session)
 ) -> Resume:
     resume = get_own_resume(session, resume_id, user)
+    if update.locked is False:
+        resume.locked = False
+    if update.name is not None or update.data is not None:
+        ensure_unlocked(resume)
     if update.name is not None:
         resume.name = update.name
     if update.data is not None:
         resume.data = update.data.model_dump(mode="json")
+    if update.locked:
+        resume.locked = True
+    if update.name is None and update.data is None:
+        # Locking isn't an edit: writing updated_at back unchanged keeps its onupdate from moving it.
+        flag_modified(resume, "updated_at")
     session.commit()
     session.refresh(resume)
     return resume
@@ -143,5 +158,7 @@ def download_pdf(
 
 @router.delete("/{resume_id}", status_code=204)
 def delete_resume(resume_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session)) -> None:
-    session.delete(get_own_resume(session, resume_id, user))
+    resume = get_own_resume(session, resume_id, user)
+    ensure_unlocked(resume)
+    session.delete(resume)
     session.commit()

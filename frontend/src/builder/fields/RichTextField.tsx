@@ -3,6 +3,7 @@ import Underline from "@tiptap/extension-underline";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect } from "react";
+import { useBuilder } from "../store";
 import { IconButton, Icons } from "../ui";
 
 interface Props {
@@ -58,6 +59,12 @@ export default function RichTextField({ label, value, onChange }: Props) {
     editorProps: { attributes: { class: "rich-text min-h-20 px-2.5 py-1.5 text-sm outline-none" } },
     onUpdate: ({ editor }) => onChange(normalize(editor.getHTML())),
   });
+
+  // A disabled fieldset doesn't reach contenteditable, so a locked resume switches the editor off itself.
+  const locked = useBuilder((s) => s.locked);
+  useEffect(() => {
+    editor?.setEditable(!locked);
+  }, [editor, locked]);
 
   // External changes (undo/redo) replace the content; typing doesn't, so the cursor stays put.
   useEffect(() => {
