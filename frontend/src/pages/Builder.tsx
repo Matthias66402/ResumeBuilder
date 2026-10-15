@@ -86,12 +86,15 @@ function TopBar({ zoom, setZoom, onJson }: { zoom: number | "fit"; setZoom: (z: 
       <Link to="/" title="Alle Lebensläufe" className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900">
         <Icons.ArrowLeft />
       </Link>
-      <input
-        value={name}
-        onChange={(e) => rename(e.target.value)}
-        aria-label="Name des Lebenslaufs"
-        className="min-w-0 flex-1 rounded-md px-2 py-1 font-semibold outline-none hover:bg-slate-50 focus:bg-slate-50 focus:ring-2 focus:ring-blue-100 sm:max-w-xs"
-      />
+      <label className="group relative flex min-w-0 flex-1 items-center sm:max-w-xs" title="Name des Lebenslaufs, auch Dateiname des PDFs">
+        <input
+          value={name}
+          onChange={(e) => rename(e.target.value)}
+          aria-label="Name des Lebenslaufs"
+          className="w-full min-w-0 rounded-md py-1 pl-2 pr-7 font-semibold outline-none hover:bg-slate-50 focus:bg-slate-50 focus:ring-2 focus:ring-blue-100"
+        />
+        <i className="ph ph-pencil-simple pointer-events-none absolute right-2 text-slate-400 group-hover:text-slate-600" aria-hidden />
+      </label>
       <span className={`hidden text-xs md:inline ${className}`}>
         {text}
         {status === "error" && (

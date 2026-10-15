@@ -51,11 +51,40 @@ function Thumbnail({ data }: { data: ResumeData }) {
 interface CardProps {
   resume: ResumeSummary;
   data?: ResumeData;
+  onRename: (name: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
 }
 
-function ResumeCard({ resume, data, onDuplicate, onDelete }: CardProps) {
+/** Inline name editor: Enter or leaving the field saves, Escape cancels. */
+function NameEditor({ name, onDone }: { name: string; onDone: (name: string | null) => void }) {
+  const [value, setValue] = useState(name);
+  const done = useRef(false);
+  const finish = (result: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(result);
+  };
+  return (
+    <input
+      autoFocus
+      value={value}
+      maxLength={255}
+      aria-label="Name des Lebenslaufs"
+      onFocus={(e) => e.target.select()}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") finish(value);
+        if (e.key === "Escape") finish(null);
+      }}
+      onBlur={() => finish(value)}
+      className="w-full rounded-md border border-blue-400 px-1.5 py-0.5 font-medium text-slate-900 outline-none ring-2 ring-blue-100"
+    />
+  );
+}
+
+function ResumeCard({ resume, data, onRename, onDuplicate, onDelete }: CardProps) {
+  const [editing, setEditing] = useState(false);
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md">
       <Link to={`/resumes/${resume.id}`} className="relative block aspect-[210/297] overflow-hidden bg-slate-100" aria-label={`${resume.name} bearbeiten`}>
@@ -74,15 +103,42 @@ function ResumeCard({ resume, data, onDuplicate, onDelete }: CardProps) {
       </Link>
       <div className="flex items-start gap-2 border-t border-slate-100 p-3">
         <div className="min-w-0 flex-1">
-          <Link to={`/resumes/${resume.id}`} className="block truncate font-medium text-slate-900 hover:text-blue-700">
-            {resume.name}
-          </Link>
+          {editing ? (
+            <NameEditor
+              name={resume.name}
+              onDone={(name) => {
+                setEditing(false);
+                if (name?.trim() && name.trim() !== resume.name) onRename(name.trim());
+              }}
+            />
+          ) : (
+            <Link
+              to={`/resumes/${resume.id}`}
+              onDoubleClick={(e) => {
+                e.preventDefault();
+                setEditing(true);
+              }}
+              title="Doppelklick zum Umbenennen"
+              className="block truncate font-medium text-slate-900 hover:text-blue-700"
+            >
+              {resume.name}
+            </Link>
+          )}
           <p className="truncate text-xs text-slate-500" title={new Date(resume.updated_at).toLocaleString("de-DE")}>
             {data && <span className="font-medium text-slate-600">{getTemplate(data.metadata.template).name}</span>}
             {data && " · "}
             bearbeitet {relativeTime(resume.updated_at)}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          title="Umbenennen (auch Dateiname des PDFs)"
+          aria-label={`${resume.name} umbenennen`}
+          className="rounded-md p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+        >
+          <i className="ph ph-pencil-simple text-lg" aria-hidden />
+        </button>
         <button
           type="button"
           onClick={onDuplicate}
@@ -196,6 +252,19 @@ export default function ResumeList() {
     }
   };
 
+  const rename = async (resume: ResumeSummary, name: string) => {
+    setError(null);
+    // Shown right away; on failure the old name comes back with the error message.
+    setResumes((list) => list?.map((r) => (r.id === resume.id ? { ...r, name } : r)) ?? null);
+    try {
+      const { data: _data, ...updated } = await api.updateResume(resume.id, { name });
+      setResumes((list) => list?.map((r) => (r.id === resume.id ? updated : r)) ?? null);
+    } catch (e) {
+      setResumes((list) => list?.map((r) => (r.id === resume.id ? resume : r)) ?? null);
+      setError((e as Error).message);
+    }
+  };
+
   const duplicate = async (resume: ResumeSummary) => {
     setError(null);
     try {
@@ -258,7 +327,14 @@ export default function ResumeList() {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
           <ImportCard busy={busy} onPick={pick} onFile={upload} />
           {resumes?.map((r) => (
-            <ResumeCard key={r.id} resume={r} data={details[r.id]} onDuplicate={() => duplicate(r)} onDelete={() => remove(r)} />
+            <ResumeCard
+              key={r.id}
+              resume={r}
+              data={details[r.id]}
+              onRename={(name) => rename(r, name)}
+              onDuplicate={() => duplicate(r)}
+              onDelete={() => remove(r)}
+            />
           ))}
         </div>
       </div>
