@@ -65,6 +65,8 @@ export interface ProjectItem extends BaseItem {
   period: string;
   dates: ResumeDates;
   website: ItemWebsite;
+  /** Not in Reactive Resume: icon in front of the project link; missing in older resumes. */
+  linkIcon?: string;
   description: string;
 }
 

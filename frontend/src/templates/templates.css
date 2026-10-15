@@ -86,6 +86,7 @@
 /* Phosphor icons: contact and item icons in the accent color, section icons follow the heading. */
 .rb-icon { flex-shrink: 0; font-size: 1.05em; line-height: 1; position: relative; top: 0.1em; color: var(--rb-icon-color, var(--rb-accent)); }
 .rb-entry-name { display: inline-flex; align-items: baseline; gap: 0.35em; }
+.rb-link-icon { display: inline-flex; align-items: baseline; gap: 0.35em; }
 .rb-section-icon { color: inherit; margin-right: 0.35em; }
 .rb-contact-list { flex-direction: column; }
 .rb-contact-grid { display: grid; grid-template-columns: 1fr 1fr; }

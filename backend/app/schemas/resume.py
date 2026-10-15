@@ -153,6 +153,8 @@ class ProjectItem(BaseItem):
     period: str = ""
     dates: ResumeDates = Field(default_factory=ResumeDates)
     website: ItemWebsite = Field(default_factory=ItemWebsite)
+    # Not in Reactive Resume: Phosphor icon shown in front of the project link.
+    link_icon: str = ""
     description: str = ""
 
 

@@ -52,9 +52,17 @@ export default function ItemFields({ fields, item, onChange }: Props) {
           case "url": {
             const website = item.website as ItemWebsite;
             return (
-              <div key={field.key} className="col-span-2 grid grid-cols-2 gap-3">
-                <TextInput label="Website-URL" placeholder="https://" value={website.url} onChange={(e) => onChange("website", { ...website, url: e.target.value })} />
-                <TextInput label="Link-Text" placeholder="optional" value={website.label} onChange={(e) => onChange("website", { ...website, label: e.target.value })} />
+              <div key={field.key} className="col-span-2 flex items-end gap-3">
+                {field.withIcon && (
+                  <div>
+                    <span className="mb-1 block text-xs font-medium text-slate-600">Icon</span>
+                    <IconPicker value={item.linkIcon ?? ""} onChange={(v) => onChange("linkIcon", v)} title="Icon für den Link wählen" />
+                  </div>
+                )}
+                <div className="grid min-w-0 flex-1 grid-cols-2 gap-3">
+                  <TextInput label="Website-URL" placeholder="https://" value={website.url} onChange={(e) => onChange("website", { ...website, url: e.target.value })} />
+                  <TextInput label="Link-Text" placeholder="optional" value={website.label} onChange={(e) => onChange("website", { ...website, label: e.target.value })} />
+                </div>
               </div>
             );
           }

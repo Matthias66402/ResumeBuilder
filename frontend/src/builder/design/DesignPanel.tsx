@@ -231,7 +231,7 @@ function PagePanel() {
       </label>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={!page.hideIcons} onChange={(e) => set((m) => void (m.page.hideIcons = !e.target.checked))} />
-        Icons bei Kontakt, Profilen, Kenntnissen
+        Icons bei Kontakt, Profilen, Kenntnissen, Projekt-Links
       </label>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={!page.hideSectionIcons} onChange={(e) => set((m) => void (m.page.hideSectionIcons = !e.target.checked))} />

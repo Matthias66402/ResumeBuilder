@@ -19,6 +19,8 @@ interface Entry {
   website?: ItemWebsite;
   /** Makes the title (with its icon) a link, as for profiles. */
   titleLink?: string;
+  /** Icon in front of the website link (projects). */
+  linkIcon?: string;
   description?: string;
   keywords?: string[];
   level?: number;
@@ -43,7 +45,7 @@ const ENTRY: Record<SectionKey, (i: any) => Omit<Entry, "id">> = {
     children: i.roles.filter((r: any) => r.position.trim()).map((r: any) => ({ id: r.id, title: r.position, meta: r.period, description: r.description })),
   }),
   education: (i) => ({ title: i.school, subtitle: join(i.degree, i.area, i.grade), meta: i.period, location: i.location, website: i.website, description: i.description }),
-  projects: (i) => ({ title: i.name, meta: i.period, website: i.website, description: i.description }),
+  projects: (i) => ({ title: i.name, meta: i.period, website: i.website, linkIcon: i.linkIcon, description: i.description }),
   skills: (i) => ({ title: i.name, subtitle: i.proficiency, keywords: i.keywords, level: i.level, icon: i.icon, iconColor: i.iconColor }),
   languages: (i) => ({ title: i.language, subtitle: i.fluency, level: i.level }),
   interests: (i) => ({ title: i.name, keywords: i.keywords, icon: i.icon, iconColor: i.iconColor }),
@@ -93,10 +95,11 @@ function Level({ value }: { value: number }) {
   );
 }
 
-function Website({ website }: { website?: ItemWebsite }) {
+function Website({ website, icon }: { website?: ItemWebsite; icon?: string }) {
   if (!website?.url) return null;
   return (
-    <a className="rb-link" href={absoluteLink(website.url)} target="_blank" rel="noreferrer">
+    <a className={`rb-link ${icon ? "rb-link-icon" : ""}`} href={absoluteLink(website.url)} target="_blank" rel="noreferrer">
+      {icon && <Icon name={icon} />}
       {website.label || website.url.replace(/^https?:\/\/(www\.)?/, "")}
     </a>
   );
@@ -134,7 +137,7 @@ function EntryView({
         <div className="rb-entry-title">
           <strong className="rb-entry-name">
             {entry.titleLink ? (
-              <a className="rb-link" href={absoluteLink(entry.titleLink)} target="_blank" rel="noreferrer">
+              <a className="rb-link rb-link-icon" href={absoluteLink(entry.titleLink)} target="_blank" rel="noreferrer">
                 {icons && entry.icon && <Icon name={entry.icon} color={entry.iconColor || undefined} />}
                 {entry.title}
               </a>
@@ -157,7 +160,7 @@ function EntryView({
       {compact && (entry.meta || entry.location) && <div className="rb-entry-meta-inline">{join(entry.meta, entry.location)}</div>}
       {levels && entry.level !== undefined && <Level value={entry.level} />}
       <Keywords keywords={entry.keywords} list={keywordList} />
-      <Website website={entry.website} />
+      <Website website={entry.website} icon={icons ? entry.linkIcon : undefined} />
       {entry.description && <Html html={entry.description} />}
       {!!entry.children?.length && (
         <div className="rb-roles">

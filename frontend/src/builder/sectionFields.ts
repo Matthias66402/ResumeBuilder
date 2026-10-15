@@ -10,6 +10,8 @@ export interface FieldDef {
   /** Single-date entries (awards, certifications, publications) have no end date. */
   single?: boolean;
   half?: boolean;
+  /** "url" fields: also pick an icon shown in front of the link (stored as `linkIcon`). */
+  withIcon?: boolean;
 }
 
 // Items are edited generically; their exact shape is in types/resume.ts.
@@ -52,11 +54,11 @@ export const SECTION_FIELDS: Record<SectionKey, SectionConfig> = {
     defaults: () => ({ school: "", degree: "", area: "", grade: "", location: "", period: "", dates: emptyDates(), website: emptyWebsite(), description: "" }),
   },
   projects: {
-    fields: [text("name", "Name", false), period, website, description],
+    fields: [text("name", "Name", false), period, { ...website, withIcon: true }, description],
     required: "name",
     title: (i) => i.name,
     subtitle: (i) => i.period,
-    defaults: () => ({ name: "", period: "", dates: emptyDates(), website: emptyWebsite(), description: "" }),
+    defaults: () => ({ name: "", period: "", dates: emptyDates(), website: emptyWebsite(), linkIcon: "", description: "" }),
   },
   skills: {
     fields: [icon, text("name", "Name"), text("proficiency", "Niveau"), { key: "level", label: "Stufe", type: "level" }, { key: "keywords", label: "Schlagwörter", type: "keywords" }],
