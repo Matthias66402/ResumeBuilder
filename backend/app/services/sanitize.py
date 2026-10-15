@@ -66,7 +66,54 @@ def network_icon(network: str) -> str:
     return NETWORK_ICONS.get(key, "globe") if key else ""
 
 
+# Month names by their first three letters (German and English), for date texts like "März 2020" or "Oct 2019".
+MONTH_PREFIXES = {
+    "jan": 1, "feb": 2, "mär": 3, "mar": 3, "mrz": 3, "apr": 4, "mai": 5, "may": 5, "jun": 6, "jul": 7,
+    "aug": 8, "sep": 9, "okt": 10, "oct": 10, "nov": 11, "dez": 12, "dec": 12,
+}  # fmt: skip
+PRESENT_RE = re.compile(r"(bis\s+)?(heute|dato|jetzt|aktuell|laufend|present|now|current|today|ongoing)", re.IGNORECASE)
+RANGE_SEPARATOR_RE = re.compile(r"\s*[–—]\s*|\s+-\s+|\s+(?:bis|to|until)\s+", re.IGNORECASE)
+
+
+def parse_date(text: str) -> str | None:
+    """One date as "YYYY" or "YYYY-MM": "03/2019", "03.2019", "2019-03", "2019", "März 2019", "Oct. 2019"."""
+    t = text.strip().rstrip(".")
+    if m := re.fullmatch(r"(\d{1,2})\s*[./-]\s*(\d{4})", t):
+        month, year = int(m[1]), m[2]
+    elif m := re.fullmatch(r"(\d{4})-(\d{1,2})", t):
+        year, month = m[1], int(m[2])
+    elif re.fullmatch(r"\d{4}", t):
+        return t
+    elif m := re.fullmatch(r"([^\W\d_]{3,})\.?\s+(\d{4})", t):
+        month, year = MONTH_PREFIXES.get(m[1][:3].lower(), 0), m[2]
+    else:
+        return None
+    return f"{year}-{month:02d}" if 1 <= month <= 12 else None
+
+
+def parse_period(text: str) -> ResumeDates | None:
+    """Reads a date text like "03/2019 – Heute" or "2014 - 2018"; None if it isn't exactly a date or a range."""
+    text = text.strip()
+    if single := parse_date(text):  # before splitting, so "2019-03" stays one date
+        return ResumeDates(start=single)
+    parts = RANGE_SEPARATOR_RE.split(text, maxsplit=1)
+    if len(parts) == 1:  # last resort: a bare hyphen, as in "2014-2018" or "03.2019-05.2020"
+        parts = text.split("-", 1)
+    start = parse_date(parts[0])
+    if start is None:
+        return None
+    if len(parts) == 1:
+        return ResumeDates(start=start)
+    if PRESENT_RE.fullmatch(parts[1].strip()):
+        return ResumeDates(start=start, present=True)
+    end = parse_date(parts[1])
+    return ResumeDates(start=start, end=end) if end else None
+
+
 def to_dates(d: x.XDates) -> ResumeDates:
+    # The LLM sometimes leaves start/end empty even for plain texts like "03/2019 – Heute"; read those directly.
+    if d.start is None and (parsed := parse_period(d.text)):
+        return parsed
     dates = ResumeDates(start=d.start, end=d.end, present=d.present)
     # Keep the original text when it couldn't be read exactly, as Reactive Resume does.
     if dates.start is None and d.text.strip():

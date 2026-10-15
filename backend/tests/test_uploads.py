@@ -29,6 +29,32 @@ def test_picture_upload_is_served(client, resume_id):
     assert served.content == png_bytes()
 
 
+def test_duplicate_copies_data_and_gets_its_own_picture(client, resume_id):
+    url = client.post(f"/api/resumes/{resume_id}/picture", files={"file": ("me.png", png_bytes(), "image/png")}).json()["url"]
+    data = client.get(f"/api/resumes/{resume_id}").json()["data"]
+    data["picture"]["url"] = url
+    data["basics"]["headline"] = "Staff Engineer"
+    client.put(f"/api/resumes/{resume_id}", json={"data": data})
+
+    res = client.post(f"/api/resumes/{resume_id}/duplicate")
+    assert res.status_code == 201, res.text
+    copy = res.json()
+    assert copy["id"] != resume_id
+    assert copy["name"] == "Max Mustermann (Kopie)"
+    assert copy["data"]["basics"]["headline"] == "Staff Engineer"
+    copy_url = copy["data"]["picture"]["url"]
+    assert copy_url.startswith("/api/uploads/") and copy_url != url
+
+    # The copy keeps its picture when the original (and with it the original's upload) is deleted.
+    assert client.delete(f"/api/resumes/{resume_id}").status_code == 204
+    assert client.get(copy_url).content == png_bytes()
+    assert client.get(f"/api/resumes/{copy['id']}").json()["data"]["picture"]["url"] == copy_url
+
+
+def test_duplicate_of_unknown_resume_is_404(client):
+    assert client.post("/api/resumes/00000000-0000-0000-0000-000000000000/duplicate").status_code == 404
+
+
 def test_picture_type_is_sniffed_not_trusted(client, resume_id):
     res = client.post(f"/api/resumes/{resume_id}/picture", files={"file": ("me.png", b"<svg/>", "image/png")})
     assert res.status_code == 415

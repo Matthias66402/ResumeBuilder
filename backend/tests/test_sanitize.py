@@ -49,6 +49,27 @@ def test_dates_are_structured_and_period_text_is_written():
     assert data.metadata.page.locale == "de-DE"
 
 
+def test_date_texts_are_read_when_the_llm_leaves_dates_empty():
+    texts = {
+        "03/2019 – Heute": ResumeDates(start="2019-03", present=True),
+        "04/2012 – 04/2014": ResumeDates(start="2012-04", end="2014-04"),
+        "2014 - 2018": ResumeDates(start="2014", end="2018"),
+        "März 2020 bis heute": ResumeDates(start="2020-03", present=True),
+        "Oct. 2019 to Present": ResumeDates(start="2019-10", present=True),
+        "2019-03": ResumeDates(start="2019-03"),
+        "03.2019-05.2020": ResumeDates(start="2019-03", end="2020-05"),
+    }
+    data = sanitize(extracted(language="de", experience=[{"company": t, "dates": {"text": t}} for t in texts]))
+    assert [i.dates for i in data.sections.experience.items] == list(texts.values())
+    assert data.sections.experience.items[0].period == "März 2019 – Heute"
+
+
+def test_unreadable_date_texts_stay_raw():
+    for text in ("Sommer 2016", "13/2019 – Heute", "seit 2019", "2019 – irgendwann"):
+        data = sanitize(extracted(education=[{"school": "TU", "dates": {"text": text}}]))
+        assert data.sections.education.items[0].dates.raw == text, text
+
+
 def test_raw_is_omitted_when_absent():
     dumped = ResumeDates(start="2014", end="2018").model_dump()
     assert dumped == {"start": "2014", "end": "2018", "present": False}

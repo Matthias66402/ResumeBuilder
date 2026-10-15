@@ -51,10 +51,11 @@ function Thumbnail({ data }: { data: ResumeData }) {
 interface CardProps {
   resume: ResumeSummary;
   data?: ResumeData;
+  onDuplicate: () => void;
   onDelete: () => void;
 }
 
-function ResumeCard({ resume, data, onDelete }: CardProps) {
+function ResumeCard({ resume, data, onDuplicate, onDelete }: CardProps) {
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md">
       <Link to={`/resumes/${resume.id}`} className="relative block aspect-[210/297] overflow-hidden bg-slate-100" aria-label={`${resume.name} bearbeiten`}>
@@ -82,6 +83,15 @@ function ResumeCard({ resume, data, onDelete }: CardProps) {
             bearbeitet {relativeTime(resume.updated_at)}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={onDuplicate}
+          title="Duplizieren"
+          aria-label={`${resume.name} duplizieren`}
+          className="rounded-md p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+        >
+          <i className="ph ph-copy text-lg" aria-hidden />
+        </button>
         <button
           type="button"
           onClick={onDelete}
@@ -186,6 +196,18 @@ export default function ResumeList() {
     }
   };
 
+  const duplicate = async (resume: ResumeSummary) => {
+    setError(null);
+    try {
+      const { data, ...copy } = await api.duplicateResume(resume.id);
+      // Newest first, like the list from the server.
+      setResumes((list) => (list ? [copy, ...list] : [copy]));
+      setDetails((d) => ({ ...d, [copy.id]: data }));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   const pick = () => fileInput.current?.click();
 
   return (
@@ -236,7 +258,7 @@ export default function ResumeList() {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
           <ImportCard busy={busy} onPick={pick} onFile={upload} />
           {resumes?.map((r) => (
-            <ResumeCard key={r.id} resume={r} data={details[r.id]} onDelete={() => remove(r)} />
+            <ResumeCard key={r.id} resume={r} data={details[r.id]} onDuplicate={() => duplicate(r)} onDelete={() => remove(r)} />
           ))}
         </div>
       </div>

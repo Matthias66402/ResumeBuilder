@@ -46,6 +46,7 @@ export const api = {
       body: JSON.stringify(update),
     }),
   deleteResume: (id: string) => request<void>(`/resumes/${id}`, { method: "DELETE" }),
+  duplicateResume: (id: string) => request<Resume>(`/resumes/${id}/duplicate`, { method: "POST" }),
   uploadPicture: (resumeId: string, file: Blob) => {
     const form = new FormData();
     form.append("file", file, "picture");

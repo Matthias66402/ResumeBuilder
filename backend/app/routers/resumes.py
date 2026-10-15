@@ -1,3 +1,4 @@
+import copy as copy_module
 import re
 import uuid
 from pathlib import Path
@@ -10,13 +11,16 @@ from sqlalchemy.orm import Session
 from app.auth import COOKIE_NAME, current_user
 from app.config import get_settings
 from app.db import get_session
-from app.models import Resume, User
+from app.models import Resume, Upload, User
 from app.schemas.api import ResumeOut, ResumeSummary, ResumeUpdate
 from app.services.parser import ParseError, parse_resume_text
 from app.services.pdf_render import RenderError, render_resume_pdf
 from app.services.pdf_text import PdfError, extract_text
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
+
+# Picture URLs written by routers/uploads.py.
+UPLOAD_URL_RE = re.compile(r"/api/uploads/([0-9a-f-]{36})")
 
 
 # Sync handlers: FastAPI runs them in a threadpool, so PDF parsing and the Groq call don't block the event loop.
@@ -83,6 +87,38 @@ def update_resume(
     session.commit()
     session.refresh(resume)
     return resume
+
+
+@router.post("/{resume_id}/duplicate", response_model=ResumeOut, status_code=201)
+def duplicate_resume(resume_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session)) -> Resume:
+    original = get_own_resume(session, resume_id, user)
+    data = copy_module.deepcopy(original.data)
+    copy = Resume(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        name=f"{original.name} (Kopie)"[:255],
+        source_filename=original.source_filename,
+        raw_text=original.raw_text,
+        data=data,
+    )
+
+    # The picture belongs to the original and is deleted with it, so the copy gets its own. The new URL goes into
+    # `data` before anything is added to the session: edits inside a JSON column aren't tracked once it's stored.
+    picture = data.get("picture") or {}
+    match = UPLOAD_URL_RE.fullmatch(picture.get("url", ""))
+    upload = session.get(Upload, uuid.UUID(match[1])) if match else None
+    own = None
+    if upload and upload.resume_id == original.id:
+        own = Upload(id=uuid.uuid4(), resume_id=copy.id, content_type=upload.content_type, content=upload.content)
+        picture["url"] = f"/api/uploads/{own.id}"
+
+    session.add(copy)
+    session.flush()  # the copy must exist before its upload references it
+    if own:
+        session.add(own)
+    session.commit()
+    session.refresh(copy)
+    return copy
 
 
 @router.get("/{resume_id}/pdf")
