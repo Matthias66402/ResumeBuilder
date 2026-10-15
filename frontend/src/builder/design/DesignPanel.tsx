@@ -139,7 +139,25 @@ function TypographyPanel() {
           </div>
         );
       })}
+      <NameSize />
     </PanelSection>
+  );
+}
+
+/** Name size in pt, independent of the template; unchecked, the template's own size applies. */
+function NameSize() {
+  const [metadata, set] = useMetadata();
+  const size = metadata.typography.nameFontSize;
+  // Starting point when switching on: the size most templates use (1.5 × heading size).
+  const templateSize = Math.round(metadata.typography.heading.fontSize * 1.5);
+  return (
+    <div className="space-y-2">
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={!!size} onChange={(e) => set((m) => void (m.typography.nameFontSize = e.target.checked ? templateSize : null))} />
+        Eigene Größe für den Namen
+      </label>
+      {!!size && <Slider label="Name" unit=" pt" min={12} max={48} value={size} onChange={(v) => set((m) => void (m.typography.nameFontSize = v), "typo:name:size")} />}
+    </div>
   );
 }
 

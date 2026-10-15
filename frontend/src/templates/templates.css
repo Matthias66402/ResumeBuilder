@@ -15,6 +15,10 @@
   --rb-tint-light: color-mix(in srgb, var(--rb-primary) 10%, var(--rb-bg));
   --rb-rule: color-mix(in srgb, var(--rb-primary) 30%, var(--rb-bg));
 
+  /* Unhinted glyph widths: the PDF's headless Chromium on Linux otherwise rounds every glyph to whole pixels,
+     sets text ~5 % wider than the browser preview and breaks lines (and pages) where the preview doesn't. */
+  text-rendering: geometricPrecision;
+
   position: relative;
   box-sizing: border-box;
   padding: var(--rb-margin-y) var(--rb-margin-x);
@@ -68,7 +72,7 @@
 .rb-header-picture-top { flex-direction: column; align-items: stretch; gap: calc(var(--rb-gap-y) * 1.5); }
 .rb-header-picture-top > .rb-picture { align-self: center; }
 .rb-identity { display: flex; flex-direction: column; gap: calc(var(--rb-gap-y) * 0.35); }
-.rb-name { font-size: calc(var(--rb-size-heading) * 1.5); }
+.rb-name { font-size: var(--rb-size-name, calc(var(--rb-size-heading) * 1.5)); }
 .rb-headline { font-size: calc(var(--rb-size-body) * 1.1); }
 .rb-picture { flex-shrink: 0; display: block; background: color-mix(in srgb, var(--rb-text) 5%, transparent); }
 .rb-sidebar-picture { display: flex; justify-content: center; }
@@ -103,7 +107,7 @@
 .rb-entry-meta-inline { opacity: 0.75; font-size: 0.95em; }
 .rb-keywords { opacity: 0.85; }
 .rb-keywords-list { list-style: none; margin: 0; padding: 0; }
-.rb-rich { margin-top: 0.2em; }
+.rb-rich { margin-top: 0.2em; text-align: var(--rb-text-align); hyphens: var(--rb-hyphens); }
 .rb-rich a { color: inherit; text-decoration: var(--rb-link-decoration); }
 .rb-roles { margin-top: 0.3em; padding-left: 0.75em; border-left: 2px solid color-mix(in srgb, var(--rb-accent) 35%, transparent); display: flex; flex-direction: column; gap: 0.4em; }
 
@@ -175,7 +179,7 @@
 /* --- Scizor: accent bar on top, light dividers between sections -------------------------------- */
 .rb-template-scizor::before { content: ""; position: absolute; inset: 0 0 auto 0; height: calc(var(--rb-gap-y) * 0.45); background: var(--rb-primary); }
 .rb-template-scizor .rb-header { align-items: flex-start; padding-bottom: calc(var(--rb-gap-y) * 0.35); }
-.rb-template-scizor .rb-name { font-size: calc(var(--rb-size-heading) * 1.85); width: 72%; border-bottom: 2px solid #d8dce2; padding-bottom: 0.15em; }
+.rb-template-scizor .rb-name { font-size: var(--rb-size-name, calc(var(--rb-size-heading) * 1.85)); width: 72%; border-bottom: 2px solid #d8dce2; padding-bottom: 0.15em; }
 .rb-template-scizor .rb-section { border-top: 1px solid #d8dce2; padding-top: calc(var(--rb-gap-y) * 0.65); }
 .rb-template-scizor .rb-heading { color: inherit; font-size: calc(var(--rb-size-heading) * 0.9); text-transform: uppercase; }
 
@@ -183,7 +187,7 @@
 .rb-template-porygon .rb-header { border: 1px solid var(--rb-primary); gap: 0; align-items: stretch; }
 .rb-template-porygon .rb-identity { padding: calc(var(--rb-gap-y) * 0.95) calc(var(--rb-gap-x) * 0.75); }
 .rb-template-porygon .rb-header-text { gap: 0; }
-.rb-template-porygon .rb-name { font-size: calc(var(--rb-size-heading) * 2); }
+.rb-template-porygon .rb-name { font-size: var(--rb-size-name, calc(var(--rb-size-heading) * 2)); }
 .rb-template-porygon .rb-headline { color: var(--rb-primary); }
 .rb-template-porygon .rb-contact { gap: 0; }
 .rb-template-porygon .rb-contact-item { border-top: 0.75pt solid var(--rb-rule); border-left: 0.75pt solid var(--rb-rule); margin-left: -0.75pt; padding: calc(var(--rb-gap-y) * 0.45) calc(var(--rb-gap-x) * 0.75); }
@@ -205,7 +209,7 @@
 .rb-template-smeargle .rb-header { align-items: flex-end; border-bottom: 0.5pt solid var(--rb-text); padding-bottom: calc(var(--rb-gap-y) * 1.25); }
 .rb-template-smeargle .rb-identity { flex-direction: column-reverse; gap: calc(var(--rb-gap-y) * 0.6); }
 .rb-template-smeargle .rb-headline { font-size: 0.85em; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--rb-primary); }
-.rb-template-smeargle .rb-name { font-size: calc(var(--rb-size-heading) * 2.25); font-weight: 400; line-height: 1.05; letter-spacing: -0.02em; }
+.rb-template-smeargle .rb-name { font-size: var(--rb-size-name, calc(var(--rb-size-heading) * 2.25)); font-weight: 400; line-height: 1.05; letter-spacing: -0.02em; }
 .rb-template-smeargle .rb-contact { font-size: 0.85em; column-gap: 1em; }
 .rb-template-smeargle .rb-contact-item + .rb-contact-item::before { content: none; }
 .rb-template-smeargle .rb-heading { color: inherit; font-weight: 400; font-style: italic; }

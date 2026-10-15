@@ -184,12 +184,15 @@ export interface Metadata {
     hideLinkUnderline: boolean;
     hideIcons: boolean;
     hideSectionIcons: boolean;
+    /** Not in Reactive Resume: running text ragged right or justified; missing in older resumes. */
+    textAlign?: "left" | "justify";
   };
   design: {
     colors: { primary: string; text: string; background: string };
     level: { icon: string; type: string };
   };
-  typography: { body: TypographyItem; heading: TypographyItem };
+  /** nameFontSize (pt) is not in Reactive Resume: overrides the template's name size; null/missing = template. */
+  typography: { body: TypographyItem; heading: TypographyItem; nameFontSize?: number | null };
   notes: string;
   styleRules: unknown[];
 }

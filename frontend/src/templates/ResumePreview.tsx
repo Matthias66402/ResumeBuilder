@@ -24,6 +24,8 @@ function cssVariables(data: ResumeData): CSSProperties {
     "--rb-font-heading": `"${typography.heading.fontFamily}", serif`,
     "--rb-size-body": `${typography.body.fontSize}pt`,
     "--rb-size-heading": `${typography.heading.fontSize}pt`,
+    // Only set when chosen; otherwise each template's .rb-name falls back to its multiple of the heading size.
+    ...(typography.nameFontSize ? { "--rb-size-name": `${typography.nameFontSize}pt` } : {}),
     "--rb-lh-body": typography.body.lineHeight,
     "--rb-lh-heading": typography.heading.lineHeight,
     "--rb-weight-heading": typography.heading.fontWeights.at(-1) ?? "600",
@@ -33,6 +35,9 @@ function cssVariables(data: ResumeData): CSSProperties {
     "--rb-gap-y": `${page.gapY}pt`,
     "--rb-sidebar-width": `${layout.sidebarWidth}%`,
     "--rb-link-decoration": page.hideLinkUnderline ? "none" : "underline",
+    // Justified text needs hyphenation (by the resume's lang) to avoid wide gaps between words.
+    "--rb-text-align": page.textAlign === "justify" ? "justify" : "left",
+    "--rb-hyphens": page.textAlign === "justify" ? "auto" : "manual",
     // Lapras and Pikachu round their cards like the picture (capped as in Reactive Resume).
     "--rb-card-radius": `${Math.min(data.picture.borderRadius, 30)}pt`,
   } as CSSProperties;

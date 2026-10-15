@@ -337,6 +337,8 @@ class Page(LooseModel):
     hide_link_underline: bool = False
     hide_icons: bool = False
     hide_section_icons: bool = True
+    # Not in Reactive Resume: running text (summary, descriptions) ragged right or justified.
+    text_align: Literal["left", "justify"] = "left"
 
 
 class Colors(CamelModel):
@@ -360,6 +362,8 @@ class TypographyItem(CamelModel):
 class Typography(LooseModel):
     body: TypographyItem = Field(default_factory=lambda: TypographyItem(font_weights=["400", "500"], font_size=10))
     heading: TypographyItem = Field(default_factory=lambda: TypographyItem(font_weights=["600"], font_size=14))
+    # Not in Reactive Resume: name size in pt, overriding the template's multiple of the heading size; None = template.
+    name_font_size: float | None = Field(default=None, ge=8, le=72)
 
 
 class Metadata(LooseModel):

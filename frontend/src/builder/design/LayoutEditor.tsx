@@ -16,7 +16,7 @@ import { useState } from "react";
 import { defaultTitle, SECTION_KEYS } from "../../templates/shared/labels";
 import type { ResumeData, SectionKey } from "../../types/resume";
 import { useBuilder } from "../store";
-import { Icons, PanelSection } from "../ui";
+import { Icons, inputClass, Label, PanelSection } from "../ui";
 
 const ALL_SECTIONS = ["summary", ...SECTION_KEYS] as const;
 const UNUSED = "unused";
@@ -177,6 +177,16 @@ export default function LayoutEditor() {
           className="w-full"
         />
       </label>
+      <Label label="Textausrichtung (Profil und Beschreibungen)">
+        <select
+          value={data.metadata.page.textAlign ?? "left"}
+          onChange={(e) => update((d) => void (d.metadata.page.textAlign = e.target.value as "left" | "justify"))}
+          className={inputClass}
+        >
+          <option value="left">Flattersatz (linksbündig)</option>
+          <option value="justify">Blocksatz (links- und rechtsbündig)</option>
+        </select>
+      </Label>
     </PanelSection>
   );
 }
