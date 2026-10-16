@@ -59,3 +59,17 @@ def test_update_rejects_invalid_data(client, sample_pdf, fake_groq):
 
 def test_update_unknown_resume_is_404(client):
     assert client.put("/api/resumes/00000000-0000-0000-0000-000000000000", json={"name": "x"}).status_code == 404
+
+
+def test_create_empty_resume(client):
+    res = client.post("/api/resumes")
+    assert res.status_code == 201, res.text
+    body = res.json()
+    assert body["name"] == "Neuer Lebenslauf"
+    assert body["source_filename"] is None
+    assert body["data"]["basics"]["name"] == ""
+    assert body["data"]["sections"]["experience"]["items"] == []
+    assert body["data"]["metadata"]["template"] == "onyx"
+    # The empty document is valid, so the builder can save it back unchanged.
+    assert client.put(f"/api/resumes/{body['id']}", json={"data": body["data"]}).status_code == 200
+    assert [r["id"] for r in client.get("/api/resumes").json()] == [body["id"]]

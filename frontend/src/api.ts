@@ -39,6 +39,7 @@ export const api = {
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   listResumes: () => request<ResumeSummary[]>("/resumes"),
   getResume: (id: string) => request<Resume>(`/resumes/${id}`),
+  createResume: () => request<Resume>("/resumes", { method: "POST" }),
   updateResume: (id: string, update: { name?: string; data?: ResumeData; locked?: boolean }) =>
     request<Resume>(`/resumes/${id}`, {
       method: "PUT",

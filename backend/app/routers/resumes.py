@@ -14,6 +14,7 @@ from app.config import get_settings
 from app.db import get_session
 from app.models import Resume, Upload, User
 from app.schemas.api import ResumeOut, ResumeSummary, ResumeUpdate
+from app.schemas.resume import ResumeData
 from app.services.parser import ParseError, parse_resume_text
 from app.services.pdf_render import RenderError, render_resume_pdf
 from app.services.pdf_text import PdfError, extract_text
@@ -52,6 +53,16 @@ def import_resume(file: UploadFile, user: User = Depends(current_user), session:
         raw_text=text,
         data=data.model_dump(mode="json"),
     )
+    session.add(resume)
+    session.commit()
+    session.refresh(resume)
+    return resume
+
+
+@router.post("", response_model=ResumeOut, status_code=201)
+def create_resume(user: User = Depends(current_user), session: Session = Depends(get_session)) -> Resume:
+    """An empty resume with the default sections and design, to fill in from scratch."""
+    resume = Resume(user_id=user.id, name="Neuer Lebenslauf", data=ResumeData().model_dump(mode="json"))
     session.add(resume)
     session.commit()
     session.refresh(resume)

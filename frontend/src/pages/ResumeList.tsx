@@ -226,12 +226,31 @@ function ImportCard({ busy, onPick, onFile }: { busy: boolean; onPick: () => voi
   );
 }
 
+/** Card next to the import: starts an empty resume in the builder. */
+function CreateCard({ disabled, onCreate }: { disabled: boolean; onCreate: () => void }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onCreate}
+      className="flex h-full min-h-72 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-white/60 p-6 text-center transition hover:border-blue-400 hover:bg-white disabled:cursor-wait disabled:opacity-60"
+    >
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+        <i className="ph ph-file-plus text-3xl" aria-hidden />
+      </span>
+      <p className="font-medium text-slate-800">Leerer Lebenslauf</p>
+      <p className="text-xs text-slate-500">Ohne Vorlage starten<br />und selbst ausfüllen</p>
+    </button>
+  );
+}
+
 export default function ResumeList() {
   const navigate = useNavigate();
   const fileInput = useRef<HTMLInputElement>(null);
   const [resumes, setResumes] = useState<ResumeSummary[] | null>(null);
   const [details, setDetails] = useState<Record<string, ResumeData>>({});
   const [busy, setBusy] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -257,6 +276,18 @@ export default function ResumeList() {
       setError((e as Error).message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const create = async () => {
+    setCreating(true);
+    setError(null);
+    try {
+      const resume = await api.createResume();
+      navigate(`/resumes/${resume.id}`);
+    } catch (e) {
+      setError((e as Error).message);
+      setCreating(false);
     }
   };
 
@@ -308,7 +339,12 @@ export default function ResumeList() {
   const pick = () => fileInput.current?.click();
 
   return (
-    <AppShell actions={[{ label: "PDF importieren", icon: "upload-simple", onClick: pick, disabled: busy }]}>
+    <AppShell
+      actions={[
+        { label: "Neuer Lebenslauf", icon: "file-plus", onClick: create, disabled: creating },
+        { label: "PDF importieren", icon: "upload-simple", onClick: pick, disabled: busy },
+      ]}
+    >
       <input
         ref={fileInput}
         type="file"
@@ -328,18 +364,28 @@ export default function ResumeList() {
               {resumes === null
                 ? "Lade …"
                 : resumes.length === 0
-                  ? "Importiere deinen ersten Lebenslauf als PDF – er wird automatisch strukturiert."
+                  ? "Importiere deinen ersten Lebenslauf als PDF – er wird automatisch strukturiert – oder starte leer."
                   : `${resumes.length} ${resumes.length === 1 ? "Lebenslauf" : "Lebensläufe"} · zum Bearbeiten anklicken`}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={pick}
-            disabled={busy}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
-          >
-            <i className="ph ph-upload-simple text-base" aria-hidden /> PDF importieren
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={create}
+              disabled={creating}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60"
+            >
+              <i className="ph ph-file-plus text-base" aria-hidden /> Leerer Lebenslauf
+            </button>
+            <button
+              type="button"
+              onClick={pick}
+              disabled={busy}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+            >
+              <i className="ph ph-upload-simple text-base" aria-hidden /> PDF importieren
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -354,6 +400,7 @@ export default function ResumeList() {
 
         <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
           <ImportCard busy={busy} onPick={pick} onFile={upload} />
+          <CreateCard disabled={creating} onCreate={create} />
           {resumes?.map((r) => (
             <ResumeCard
               key={r.id}
