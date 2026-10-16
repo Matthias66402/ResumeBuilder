@@ -5,6 +5,7 @@ import pytest
 
 from app.routers import resumes as resumes_router
 from app.services.pdf_render import RenderError
+from app.services.pdf_text import extract_text
 
 
 def png_bytes() -> bytes:
@@ -75,8 +76,8 @@ def test_picture_settings_are_validated(client, resume_id):
     assert client.put(f"/api/resumes/{resume_id}", json={"data": data}).status_code == 422
 
 
-def test_pdf_download_has_attachment_name(client, resume_id, monkeypatch):
-    monkeypatch.setattr(resumes_router, "render_resume_pdf", lambda rid, token: b"%PDF-1.7 fake")
+def test_pdf_download_has_attachment_name(client, resume_id, sample_pdf, monkeypatch):
+    monkeypatch.setattr(resumes_router, "render_resume_pdf", lambda rid, token: sample_pdf)
     client.put(f"/api/resumes/{resume_id}", json={"name": "Jürgen Müller"})
 
     res = client.get(f"/api/resumes/{resume_id}/pdf")
@@ -85,7 +86,39 @@ def test_pdf_download_has_attachment_name(client, resume_id, monkeypatch):
     disposition = res.headers["content-disposition"]
     assert 'filename="J_rgen M_ller.pdf"' in disposition
     assert "filename*=UTF-8''J%C3%BCrgen%20M%C3%BCller.pdf" in disposition
-    assert res.content == b"%PDF-1.7 fake"
+    assert "Max Mustermann" in extract_text(res.content)
+
+
+def test_exported_pdf_imports_back_without_llm(new_client, sample_pdf, fake_groq, monkeypatch):
+    monkeypatch.setattr(resumes_router, "render_resume_pdf", lambda rid, token: sample_pdf)
+    client = new_client("max@example.com")
+    resume_id = client.post("/api/resumes/import", files={"file": ("cv.pdf", sample_pdf, "application/pdf")}).json()["id"]
+    url = client.post(f"/api/resumes/{resume_id}/picture", files={"file": ("me.png", png_bytes(), "image/png")}).json()["url"]
+    data = client.get(f"/api/resumes/{resume_id}").json()["data"]
+    data["picture"]["url"] = url
+    data["basics"]["headline"] = "Staff Engineer"
+    data["metadata"]["template"] = "azurill"
+    client.put(f"/api/resumes/{resume_id}", json={"data": data})
+    exported = client.get(f"/api/resumes/{resume_id}/pdf").content
+    calls = len(fake_groq.calls)
+
+    res = client.post("/api/resumes/import", files={"file": ("export.pdf", exported, "application/pdf")})
+    assert res.status_code == 201, res.text
+    imported = res.json()["data"]
+    assert len(fake_groq.calls) == calls  # read from the attachment, not parsed
+    assert imported["basics"]["headline"] == "Staff Engineer"
+    assert imported["metadata"]["template"] == "azurill"
+    # Same account: the picture is copied, so it survives deleting the exported resume.
+    assert imported["picture"]["url"].startswith("/api/uploads/") and imported["picture"]["url"] != url
+    assert client.delete(f"/api/resumes/{resume_id}").status_code == 204
+    assert client.get(imported["picture"]["url"]).content == png_bytes()
+
+    # Another account gets the data but not the picture.
+    other = new_client("erika@example.com").post(
+        "/api/resumes/import", files={"file": ("export.pdf", exported, "application/pdf")}
+    )
+    assert other.json()["data"]["basics"]["headline"] == "Staff Engineer"
+    assert other.json()["data"]["picture"]["url"] == ""
 
 
 def test_pdf_render_failure_is_502(client, resume_id, monkeypatch):

@@ -5,6 +5,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -17,7 +18,7 @@ from app.schemas.api import ResumeOut, ResumeSummary, ResumeUpdate
 from app.schemas.resume import ResumeData
 from app.services.parser import ParseError, parse_resume_text
 from app.services.pdf_render import RenderError, render_resume_pdf
-from app.services.pdf_text import PdfError, extract_text
+from app.services.pdf_text import PdfError, attach_resume_data, extract_text, read_resume_data
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 
@@ -40,23 +41,60 @@ def import_resume(file: UploadFile, user: User = Depends(current_user), session:
     except PdfError as exc:
         raise HTTPException(422, str(exc)) from exc
 
-    try:
-        data = parse_resume_text(text)
-    except ParseError as exc:
-        raise HTTPException(502, str(exc)) from exc
+    # PDFs exported here carry their resume data, which beats parsing the text with the LLM.
+    data = _attached_data(content)
+    if data is None:
+        try:
+            data = parse_resume_text(text)
+        except ParseError as exc:
+            raise HTTPException(502, str(exc)) from exc
 
     filename = file.filename or "resume.pdf"
     resume = Resume(
+        id=uuid.uuid4(),
         user_id=user.id,
         name=data.basics.name or Path(filename).stem,
         source_filename=filename,
         raw_text=text,
         data=data.model_dump(mode="json"),
     )
+    # The attached data may point to a picture of another resume; it must not depend on that one.
+    upload = _copy_picture(session, resume, user)
     session.add(resume)
+    session.flush()  # the resume must exist before its upload references it
+    if upload:
+        session.add(upload)
     session.commit()
     session.refresh(resume)
     return resume
+
+
+def _attached_data(content: bytes) -> ResumeData | None:
+    raw = read_resume_data(content)
+    if raw is None:
+        return None
+    try:
+        return ResumeData.model_validate(raw)
+    except ValidationError:
+        return None  # e.g. from an older, incompatible version: parse the text instead
+
+
+def _copy_picture(session: Session, resume: Resume, user: User) -> Upload | None:
+    """A copy of the picture `resume.data` points to, which `resume.data` then points to instead; pictures are
+    deleted with their resume. Pictures of other accounts (or gone) are removed. Call before adding `resume` to
+    the session: edits inside a JSON column aren't tracked once it's stored."""
+    picture = resume.data.get("picture") or {}
+    match = UPLOAD_URL_RE.fullmatch(picture.get("url", ""))
+    if not match:
+        return None
+    upload = session.get(Upload, uuid.UUID(match[1]))
+    source = session.get(Resume, upload.resume_id) if upload else None
+    if upload is None or source is None or source.user_id != user.id:
+        picture["url"] = ""
+        return None
+    own = Upload(id=uuid.uuid4(), resume_id=resume.id, content_type=upload.content_type, content=upload.content)
+    picture["url"] = f"/api/uploads/{own.id}"
+    return own
 
 
 @router.post("", response_model=ResumeOut, status_code=201)
@@ -118,25 +156,16 @@ def update_resume(
 @router.post("/{resume_id}/duplicate", response_model=ResumeOut, status_code=201)
 def duplicate_resume(resume_id: uuid.UUID, user: User = Depends(current_user), session: Session = Depends(get_session)) -> Resume:
     original = get_own_resume(session, resume_id, user)
-    data = copy_module.deepcopy(original.data)
     copy = Resume(
         id=uuid.uuid4(),
         user_id=user.id,
         name=f"{original.name} (Kopie)"[:255],
         source_filename=original.source_filename,
         raw_text=original.raw_text,
-        data=data,
+        data=copy_module.deepcopy(original.data),
     )
-
-    # The picture belongs to the original and is deleted with it, so the copy gets its own. The new URL goes into
-    # `data` before anything is added to the session: edits inside a JSON column aren't tracked once it's stored.
-    picture = data.get("picture") or {}
-    match = UPLOAD_URL_RE.fullmatch(picture.get("url", ""))
-    upload = session.get(Upload, uuid.UUID(match[1])) if match else None
-    own = None
-    if upload and upload.resume_id == original.id:
-        own = Upload(id=uuid.uuid4(), resume_id=copy.id, content_type=upload.content_type, content=upload.content)
-        picture["url"] = f"/api/uploads/{own.id}"
+    # The picture belongs to the original and is deleted with it, so the copy gets its own.
+    own = _copy_picture(session, copy, user)
 
     session.add(copy)
     session.flush()  # the copy must exist before its upload references it
@@ -157,6 +186,7 @@ def download_pdf(
         pdf = render_resume_pdf(str(resume.id), request.cookies[COOKIE_NAME])
     except RenderError as exc:
         raise HTTPException(502, str(exc)) from exc
+    pdf = attach_resume_data(pdf, resume.data)
     # ASCII fallback plus RFC 5987 name, so umlauts survive in the downloaded file name.
     filename = f"{resume.name}.pdf"
     ascii_name = re.sub(r"[^A-Za-z0-9._ -]", "_", filename)
